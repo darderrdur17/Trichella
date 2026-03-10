@@ -1,0 +1,9 @@
+{
+  "name": "trichella",
+  "private": true,
+  "scripts": {
+    "dev": "cd trichella-app && npm run dev",
+    "server": "cd trichella-app && npm run server",
+    "dev:all": "cd trichella-app && npm run dev:all"
+  }
+}

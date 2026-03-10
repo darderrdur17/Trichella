@@ -1,0 +1,4 @@
+/* Minimal base — Trichella App.jsx injects full theme */
+#root {
+  min-height: 100vh;
+}
