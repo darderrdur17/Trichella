@@ -24,6 +24,7 @@ import {
   Clock, Download, Plus, ArrowRight, Microscope, Layers, RefreshCw,
   Database, Target, Activity, User, LogOut, Menu, X, BookOpen, Award
 } from "lucide-react";
+import { saveScanAsPdf } from "./lib/pdfReport.js";
 
 // Storage: use Claude Artifacts window.storage when available, else localStorage
 const STORAGE_PREFIX = "trichella_";
@@ -1150,6 +1151,7 @@ function ScanFlow({onComplete,onBack}){
 // ══════════════════════════════════════════════════════════════════════════════
 
 function Results({scan,onNewScan,onHistory}){
+  const [savingPdf, setSavingPdf] = useState(false);
   if(!scan)return(
     <Empty icon="📋" title="No report loaded"
       body="Run a scan to see your diagnostic results here."
@@ -1159,6 +1161,15 @@ function Results({scan,onNewScan,onHistory}){
   const urgencyColor={"routine":"var(--sage)","monitor":"var(--amber)","consult":"var(--crit)"}[report.urgency]||"var(--text2)";
   const urgencyLabel={"routine":"Routine — no immediate action needed","monitor":"Monitor — recheck in 2–4 weeks","consult":"Consult a specialist — recommend professional evaluation"}[report.urgency]||report.urgency;
 
+  const handleSavePdf = async () => {
+    setSavingPdf(true);
+    try {
+      await saveScanAsPdf(scan);
+    } finally {
+      setSavingPdf(false);
+    }
+  };
+
   return(
     <div>
       <PageHeader
@@ -1166,6 +1177,9 @@ function Results({scan,onNewScan,onHistory}){
         sub={fmt(date)+" · AI Trichological Analysis"}
         action={
           <div style={{display:"flex",gap:10}}>
+            <button className="btn btn-outline" onClick={handleSavePdf} disabled={savingPdf}>
+              <Download size={14}/> {savingPdf ? "Saving…" : "Save as PDF"}
+            </button>
             <button className="btn btn-outline" onClick={onHistory}><Clock size={14}/> History</button>
             <button className="btn btn-gold" onClick={onNewScan}><Camera size={14}/> New Scan</button>
           </div>
