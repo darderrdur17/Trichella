@@ -126,6 +126,75 @@ function fileToB64(file) {
   });
 }
 
+/** OpenAI Vision supports only png, jpeg, gif, webp. Convert BMP/video to PNG. */
+async function toSupportedFormat(file) {
+  const type = (file.type || "").toLowerCase();
+  const ext = (file.name || "").split(".").pop()?.toLowerCase();
+  const supported = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"];
+  if (supported.includes(type) || ["png", "jpeg", "jpg", "gif", "webp"].includes(ext)) {
+    const b64 = await fileToB64(file);
+    return { b64, mime: type.startsWith("image/") ? type : "image/jpeg" };
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    if (type.startsWith("video/") || ["mp4", "webm", "mov", "wmv", "avi"].includes(ext)) {
+      return await videoFrameToPng(url);
+    }
+    if (type === "image/bmp" || type === "image/x-ms-bmp" || ext === "bmp" || type.includes("bmp")) {
+      return await imageToPng(url);
+    }
+    if (type === "image/heic" || ext === "heic") {
+      return await imageToPng(url);
+    }
+    const b64 = await fileToB64(file);
+    return { b64, mime: "image/jpeg" };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function imageToPng(url) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      const dataUrl = canvas.toDataURL("image/png");
+      res({ b64: dataUrl.split(",")[1], mime: "image/png" });
+    };
+    img.onerror = () => rej(new Error("Could not load image for conversion"));
+    img.src = url;
+  });
+}
+
+function videoFrameToPng(url) {
+  return new Promise((res, rej) => {
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.onloadeddata = () => {
+      const d = video.duration;
+      video.currentTime = Number.isFinite(d) ? Math.min(1, d * 0.1) : 0.5;
+    };
+    video.onseeked = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0);
+      const dataUrl = canvas.toDataURL("image/png");
+      res({ b64: dataUrl.split(",")[1], mime: "image/png" });
+    };
+    video.onerror = () => rej(new Error("Could not load video for frame extraction"));
+    video.src = url;
+  });
+}
+
 async function runAI(b64, mime) {
   const sys = `You are a senior AI trichologist. Analyse the scalp image and return ONLY valid JSON — no markdown, no explanation.
 
@@ -162,9 +231,11 @@ function UploadSection({ onComplete }) {
   const pick = (f) => {
     if (!f) return;
     const type = (f.type || "").toLowerCase();
+    const ext = (f.name || "").split(".").pop()?.toLowerCase();
     const isImage = type.startsWith("image/") || /\.(jpe?g|png|gif|bmp|webp|heic)$/i.test(f.name || "");
-    if (!isImage) {
-      setError("Please choose an image (JPG, PNG, BMP, HEIC).");
+    const isVideo = type.startsWith("video/") || ["mp4", "webm", "mov", "wmv", "avi"].includes(ext);
+    if (!isImage && !isVideo) {
+      setError("Please choose an image (JPG, PNG, BMP, HEIC) or video (MP4, WebM, MOV, WMV, AVI).");
       return;
     }
     setFile(f);
@@ -179,11 +250,15 @@ function UploadSection({ onComplete }) {
     setError(null);
     const interval = setInterval(() => setProgress((p) => Math.min(p + 15, 90)), 400);
     try {
-      const b64 = await fileToB64(file);
-      const report = await runAI(b64, file.type);
+      const { b64, mime } = await toSupportedFormat(file);
+      const report = await runAI(b64, mime);
       clearInterval(interval);
       setProgress(100);
-      setTimeout(() => onComplete({ id: Date.now().toString(), date: new Date().toISOString(), preview, report }), 500);
+      const type = (file.type || "").toLowerCase();
+      const ext = (file.name || "").split(".").pop()?.toLowerCase();
+      const wasConverted = type.startsWith("video/") || type.includes("bmp") || type === "image/heic" || ["bmp", "wmv", "avi", "mov", "mp4", "webm"].includes(ext);
+      const previewForResults = wasConverted ? `data:image/png;base64,${b64}` : preview;
+      setTimeout(() => onComplete({ id: Date.now().toString(), date: new Date().toISOString(), preview: previewForResults, report }), 500);
     } catch (e) {
       clearInterval(interval);
       setError(e.message || "Analysis failed. Ensure backend is running and OPENAI_API_KEY is set.");
@@ -194,7 +269,7 @@ function UploadSection({ onComplete }) {
   return (
     <div className="card">
       <h2 className="heading" style={{ marginBottom: 8 }}>Upload scalp image</h2>
-      <p className="caption" style={{ marginBottom: 24 }}>JPG, PNG, BMP or HEIC · up to 20 MB</p>
+      <p className="caption" style={{ marginBottom: 24 }}>Image: JPG, PNG, BMP, HEIC · Video: MP4, WebM, MOV, WMV, AVI · up to 20 MB</p>
 
       {!preview ? (
         <div
@@ -210,7 +285,7 @@ function UploadSection({ onComplete }) {
           <input
             ref={ref}
             type="file"
-            accept="image/*,.bmp,image/bmp,image/jpeg,image/png,image/heic"
+            accept="image/*,.bmp,image/bmp,video/*,.mp4,.webm,.mov,.wmv,.avi"
             onChange={(e) => { pick(e.target?.files?.[0]); e.target.value = ""; }}
             aria-hidden
           />
@@ -220,7 +295,11 @@ function UploadSection({ onComplete }) {
         </div>
       ) : (
         <div>
-          <img src={preview} alt="Preview" style={{ width: "100%", maxHeight: 280, objectFit: "cover", borderRadius: 12, marginBottom: 16, border: "1px solid var(--border)" }} />
+          {file?.type?.startsWith("video/") ? (
+            <video src={preview} controls style={{ width: "100%", maxHeight: 280, objectFit: "cover", borderRadius: 12, marginBottom: 16, border: "1px solid var(--border)" }} />
+          ) : (
+            <img src={preview} alt="Preview" style={{ width: "100%", maxHeight: 280, objectFit: "cover", borderRadius: 12, marginBottom: 16, border: "1px solid var(--border)" }} />
+          )}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <button className="btn btn-outline" onClick={() => { setFile(null); setPreview(null); setError(null); }}>Change</button>
             <button className="btn btn-gold" onClick={analyse} disabled={loading}>
