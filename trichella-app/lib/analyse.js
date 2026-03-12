@@ -57,17 +57,20 @@ Evaluate the image against these six conditions. Use the exact condition names i
   "nextScanDays": <integer 30-90>
 }`;
 
-const USER_TASK = `Analyse the scalp image above as a consulting trichologist. Describe only what you observe. Produce the full JSON report with professional summary, specific findings, and evidence-based recommendations. Output valid JSON only; no other text or markdown.`;
+const USER_TASK_EN = `Analyse the scalp image above as a consulting trichologist. Describe only what you observe. Produce the full JSON report with professional summary, specific findings, and evidence-based recommendations. Output valid JSON only; no other text or markdown.`;
+
+const USER_TASK_ZH = `Analyse the scalp image above as a consulting trichologist. Describe only what you observe. Produce the full JSON report. IMPORTANT: Write summary, findings, and recommendations in Simplified Chinese (简体中文). Keep condition names in English exactly as: "Dry Scalp", "Oily Scalp", "Sensitive Scalp", "Acne Scalp", "Inflammation Scalp", "Dandruff Scalp". Output valid JSON only; no other text or markdown.`;
 
 function parseReportJson(txt) {
   const cleaned = txt.replace(/```json|```/g, "").trim();
   return JSON.parse(cleaned);
 }
 
-export async function runAnalysis(b64, mime) {
+export async function runAnalysis(b64, mime, lang) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new Error("OPENAI_API_KEY is not set.");
   const imageUrl = `data:${mime};base64,${b64}`;
+  const userTask = (lang || "").toLowerCase() === "zh" ? USER_TASK_ZH : USER_TASK_EN;
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -85,7 +88,7 @@ export async function runAnalysis(b64, mime) {
           role: "user",
           content: [
             { type: "image_url", image_url: { url: imageUrl } },
-            { type: "text", text: USER_TASK },
+            { type: "text", text: userTask },
           ],
         },
       ],

@@ -8,6 +8,60 @@ import { useState, useEffect, useRef } from "react";
 import { Camera, Upload, Sun, Moon, CheckCircle, XCircle, MinusCircle } from "lucide-react";
 
 // ══════════════════════════════════════════════════════════════════════════════
+// TRANSLATIONS
+// ══════════════════════════════════════════════════════════════════════════════
+const T = {
+  en: {
+    uploadTitle: "Upload scalp image",
+    uploadHint: "Image: JPG, PNG, BMP, HEIC · Video: MP4, WebM, MOV, WMV, AVI · up to 20 MB",
+    dropHere: "Drop your scalp photo here",
+    orClick: "or click to browse",
+    change: "Change",
+    analyse: "Analyse",
+    analysing: "Analysing…",
+    fileError: "Please choose an image (JPG, PNG, BMP, HEIC) or video (MP4, WebM, MOV, WMV, AVI).",
+    analysisError: "Analysis failed. Ensure backend is running and OPENAI_API_KEY is set.",
+    noResults: "No results yet",
+    noResultsDesc: "Upload and analyse a scalp image to see the 6 diagnostic conditions.",
+    uploadImage: "Upload image",
+    sixIssues: "6 scalp issues",
+    diagnosis: "Diagnosis",
+    primary: "Primary",
+    detected: "Detected",
+    accuracyCheck: "Check for accurate diagnosis",
+    wasAccurate: "Was this diagnosis accurate?",
+    yes: "Yes",
+    no: "No",
+    partially: "Partially",
+    newScan: "New scan",
+  },
+  zh: {
+    uploadTitle: "上传头皮图像",
+    uploadHint: "图片：JPG、PNG、BMP、HEIC · 视频：MP4、WebM、MOV、WMV、AVI · 最大 20 MB",
+    dropHere: "将头皮照片拖放到此处",
+    orClick: "或点击上传",
+    change: "更换",
+    analyse: "分析",
+    analysing: "分析中…",
+    fileError: "请选择图片（JPG、PNG、BMP、HEIC）或视频（MP4、WebM、MOV、WMV、AVI）。",
+    analysisError: "分析失败。请确保后端已启动且已设置 OPENAI_API_KEY。",
+    noResults: "暂无结果",
+    noResultsDesc: "上传并分析头皮图像以查看 6 种诊断状况。",
+    uploadImage: "上传图像",
+    sixIssues: "6 种头皮状况",
+    diagnosis: "诊断结果",
+    primary: "主要",
+    detected: "检测到",
+    accuracyCheck: "诊断准确性反馈",
+    wasAccurate: "此诊断是否准确？",
+    yes: "是",
+    no: "否",
+    partially: "部分准确",
+    newScan: "重新扫描",
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 // GLOBAL STYLES — Dark & Light themes
 // ══════════════════════════════════════════════════════════════════════════════
 const G = `
@@ -51,8 +105,9 @@ body{background:var(--bg);color:var(--text)}
 .logo-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--gold),#A07840);display:flex;align-items:center;justify-content:center;font-size:18px}
 .logo-name{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;letter-spacing:.5px}
 
-.theme-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.theme-btn:hover{border-color:var(--gold);color:var(--gold)}
+.theme-btn,.lang-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-size:13px;font-weight:600}
+.theme-btn:hover,.lang-btn:hover{border-color:var(--gold);color:var(--gold)}
+.lang-btn{min-width:48px;padding:0 8px}
 
 /* Cards */
 .card{background:var(--bg1);border:1px solid var(--border);border-radius:16px;padding:24px;transition:all .2s}
@@ -109,12 +164,12 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 // ══════════════════════════════════════════════════════════════════════════════
 
 const DIAG_CONDITIONS = [
-  { id: "dry", label: "Dry Scalp", icon: "💧" },
-  { id: "oily", label: "Oily Scalp", icon: "✨" },
-  { id: "sensitive", label: "Sensitive Scalp", icon: "🌿" },
-  { id: "acne", label: "Acne Scalp", icon: "⚡" },
-  { id: "inflammation", label: "Inflammation Scalp", icon: "🔴" },
-  { id: "dandruff", label: "Dandruff Scalp", icon: "❄️" },
+  { id: "dry", label: "Dry Scalp", labelZh: "干燥头皮", icon: "💧" },
+  { id: "oily", label: "Oily Scalp", labelZh: "油性头皮", icon: "✨" },
+  { id: "sensitive", label: "Sensitive Scalp", labelZh: "敏感头皮", icon: "🌿" },
+  { id: "acne", label: "Acne Scalp", labelZh: "痤疮头皮", icon: "⚡" },
+  { id: "inflammation", label: "Inflammation Scalp", labelZh: "炎症头皮", icon: "🔴" },
+  { id: "dandruff", label: "Dandruff Scalp", labelZh: "头屑头皮", icon: "❄️" },
 ];
 
 function fileToB64(file) {
@@ -195,18 +250,12 @@ function videoFrameToPng(url) {
   });
 }
 
-async function runAI(b64, mime) {
-  const sys = `You are a senior AI trichologist. Analyse the scalp image and return ONLY valid JSON — no markdown, no explanation.
-
-Evaluate against these 6 conditions: Dry Scalp, Oily Scalp, Sensitive Scalp, Acne Scalp, Inflammation Scalp, Dandruff Scalp.
-Return schema: { "conditions": ["<detected conditions from the 6>"], "primaryCondition": "<single most prominent>", "summary": "<2-sentence summary>" }
-Each condition string must match exactly one of the 6 names above.`;
-
+async function runAI(b64, mime, lang) {
   const apiUrl = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL;
   const r = await fetch(apiUrl ? `${apiUrl.replace(/\/$/, "")}/api/analyse` : "/api/analyse", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ b64, mime }),
+    body: JSON.stringify({ b64, mime, lang }),
   });
   if (!r.ok) {
     const err = await r.json().catch(() => ({}));
@@ -220,7 +269,7 @@ Each condition string must match exactly one of the 6 names above.`;
 // UPLOAD
 // ══════════════════════════════════════════════════════════════════════════════
 
-function UploadSection({ onComplete }) {
+function UploadSection({ onComplete, lang, t }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -235,7 +284,7 @@ function UploadSection({ onComplete }) {
     const isImage = type.startsWith("image/") || /\.(jpe?g|png|gif|bmp|webp|heic)$/i.test(f.name || "");
     const isVideo = type.startsWith("video/") || ["mp4", "webm", "mov", "wmv", "avi"].includes(ext);
     if (!isImage && !isVideo) {
-      setError("Please choose an image (JPG, PNG, BMP, HEIC) or video (MP4, WebM, MOV, WMV, AVI).");
+      setError(t.fileError);
       return;
     }
     setFile(f);
@@ -251,7 +300,7 @@ function UploadSection({ onComplete }) {
     const interval = setInterval(() => setProgress((p) => Math.min(p + 15, 90)), 400);
     try {
       const { b64, mime } = await toSupportedFormat(file);
-      const report = await runAI(b64, mime);
+      const report = await runAI(b64, mime, lang);
       clearInterval(interval);
       setProgress(100);
       const type = (file.type || "").toLowerCase();
@@ -261,15 +310,15 @@ function UploadSection({ onComplete }) {
       setTimeout(() => onComplete({ id: Date.now().toString(), date: new Date().toISOString(), preview: previewForResults, report }), 500);
     } catch (e) {
       clearInterval(interval);
-      setError(e.message || "Analysis failed. Ensure backend is running and OPENAI_API_KEY is set.");
+      setError(e.message || t.analysisError);
       setLoading(false);
     }
   };
 
   return (
     <div className="card">
-      <h2 className="heading" style={{ marginBottom: 8 }}>Upload scalp image</h2>
-      <p className="caption" style={{ marginBottom: 24 }}>Image: JPG, PNG, BMP, HEIC · Video: MP4, WebM, MOV, WMV, AVI · up to 20 MB</p>
+      <h2 className="heading" style={{ marginBottom: 8 }}>{t.uploadTitle}</h2>
+      <p className="caption" style={{ marginBottom: 24 }}>{t.uploadHint}</p>
 
       {!preview ? (
         <div
@@ -290,8 +339,8 @@ function UploadSection({ onComplete }) {
             aria-hidden
           />
           <div style={{ fontSize: 48, marginBottom: 12 }}>📸</div>
-          <h3 className="subheading" style={{ marginBottom: 6 }}>Drop your scalp photo here</h3>
-          <p className="body">or click to browse</p>
+          <h3 className="subheading" style={{ marginBottom: 6 }}>{t.dropHere}</h3>
+          <p className="body">{t.orClick}</p>
         </div>
       ) : (
         <div>
@@ -301,16 +350,16 @@ function UploadSection({ onComplete }) {
             <img src={preview} alt="Preview" style={{ width: "100%", maxHeight: 280, objectFit: "cover", borderRadius: 12, marginBottom: 16, border: "1px solid var(--border)" }} />
           )}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <button className="btn btn-outline" onClick={() => { setFile(null); setPreview(null); setError(null); }}>Change</button>
+            <button className="btn btn-outline" onClick={() => { setFile(null); setPreview(null); setError(null); }}>{t.change}</button>
             <button className="btn btn-gold" onClick={analyse} disabled={loading}>
               {loading ? (
                 <>
                   <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
-                  Analysing…
+                  {t.analysing}
                 </>
               ) : (
                 <>
-                  <Upload size={16} /> Analyse
+                  <Upload size={16} /> {t.analyse}
                 </>
               )}
             </button>
@@ -339,16 +388,16 @@ function UploadSection({ onComplete }) {
 // RESULTS — 6 scalp issues
 // ══════════════════════════════════════════════════════════════════════════════
 
-function ResultsSection({ scan, onNewScan }) {
+function ResultsSection({ scan, onNewScan, lang, t }) {
   const [accuracy, setAccuracy] = useState(null); // "yes" | "no" | "partial"
 
   if (!scan) {
     return (
       <div className="card" style={{ textAlign: "center", padding: 48 }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>📋</div>
-        <h3 className="subheading" style={{ marginBottom: 8 }}>No results yet</h3>
-        <p className="body" style={{ marginBottom: 20 }}>Upload and analyse a scalp image to see the 6 diagnostic conditions.</p>
-        <button className="btn btn-gold" onClick={onNewScan}><Camera size={16} /> Upload image</button>
+        <h3 className="subheading" style={{ marginBottom: 8 }}>{t.noResults}</h3>
+        <p className="body" style={{ marginBottom: 20 }}>{t.noResultsDesc}</p>
+        <button className="btn btn-gold" onClick={onNewScan}><Camera size={16} /> {t.uploadImage}</button>
       </div>
     );
   }
@@ -365,12 +414,12 @@ function ResultsSection({ scan, onNewScan }) {
             <img src={preview} alt="Scan" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 12, border: "1px solid var(--border)" }} />
           )}
           <div style={{ flex: 1, minWidth: 200 }}>
-            <h2 className="heading" style={{ marginBottom: 8 }}>6 scalp issues</h2>
+            <h2 className="heading" style={{ marginBottom: 8 }}>{t.sixIssues}</h2>
             <p className="body">{report?.summary || "—"}</p>
           </div>
         </div>
 
-        <div className="label" style={{ marginBottom: 12 }}>Diagnosis</div>
+        <div className="label" style={{ marginBottom: 12 }}>{t.diagnosis}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
           {DIAG_CONDITIONS.map((cond) => {
             const detected = conditions.some((c) => c.toLowerCase().includes(cond.id) || c.toLowerCase() === cond.label.toLowerCase());
@@ -381,9 +430,9 @@ function ResultsSection({ scan, onNewScan }) {
                 className={`cond-card ${detected ? (isPrimary ? "primary" : "detected") : "faded"}`}
               >
                 <div style={{ fontSize: 24, marginBottom: 6 }}>{cond.icon}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{cond.label}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{lang === "zh" ? cond.labelZh : cond.label}</div>
                 <div style={{ fontSize: 12, color: "var(--text3)" }}>
-                  {detected ? (isPrimary ? "Primary" : "Detected") : "—"}
+                  {detected ? (isPrimary ? t.primary : t.detected) : "—"}
                 </div>
               </div>
             );
@@ -393,32 +442,32 @@ function ResultsSection({ scan, onNewScan }) {
 
       {/* Accuracy check */}
       <div className="accuracy-section">
-        <div className="label" style={{ marginBottom: 4 }}>Check for accurate diagnosis</div>
-        <p className="body" style={{ marginBottom: 0 }}>Was this diagnosis accurate?</p>
+        <div className="label" style={{ marginBottom: 4 }}>{t.accuracyCheck}</div>
+        <p className="body" style={{ marginBottom: 0 }}>{t.wasAccurate}</p>
         <div className="accuracy-btns">
           <button
             className={`accuracy-btn ${accuracy === "yes" ? "selected-yes" : ""}`}
             onClick={() => setAccuracy("yes")}
           >
-            <CheckCircle size={18} /> Yes
+            <CheckCircle size={18} /> {t.yes}
           </button>
           <button
             className={`accuracy-btn ${accuracy === "no" ? "selected-no" : ""}`}
             onClick={() => setAccuracy("no")}
           >
-            <XCircle size={18} /> No
+            <XCircle size={18} /> {t.no}
           </button>
           <button
             className={`accuracy-btn ${accuracy === "partial" ? "selected-partial" : ""}`}
             onClick={() => setAccuracy("partial")}
           >
-            <MinusCircle size={18} /> Partially
+            <MinusCircle size={18} /> {t.partially}
           </button>
         </div>
       </div>
 
       <div style={{ marginTop: 24 }}>
-        <button className="btn btn-outline" onClick={onNewScan}><Camera size={16} /> New scan</button>
+        <button className="btn btn-outline" onClick={onNewScan}><Camera size={16} /> {t.newScan}</button>
       </div>
     </div>
   );
@@ -438,11 +487,23 @@ export default function App() {
     }
     return "dark";
   });
+  const [lang, setLang] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("trichella_lang") || "en";
+    }
+    return "en";
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("trichella_theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("trichella_lang", lang);
+  }, [lang]);
+
+  const t = T[lang] || T.en;
 
   return (
     <>
@@ -453,18 +514,27 @@ export default function App() {
             <div className="logo-mark">🔬</div>
             <span className="logo-name">Trichella</span>
           </div>
-          <button
-            className="theme-btn"
-            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              className="lang-btn"
+              onClick={() => setLang((l) => (l === "en" ? "zh" : "en"))}
+              title={lang === "en" ? "切换到中文" : "Switch to English"}
+            >
+              {lang === "en" ? "中文" : "EN"}
+            </button>
+            <button
+              className="theme-btn"
+              onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+          </div>
         </header>
 
-        <UploadSection key={scan ? scan.id : "empty"} onComplete={(s) => setScan(s)} />
+        <UploadSection key={scan ? scan.id : "empty"} onComplete={(s) => setScan(s)} lang={lang} t={t} />
         <div style={{ marginTop: 32 }}>
-          <ResultsSection scan={scan} onNewScan={() => setScan(null)} />
+          <ResultsSection scan={scan} onNewScan={() => setScan(null)} lang={lang} t={t} />
         </div>
       </div>
     </>

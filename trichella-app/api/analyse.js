@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     });
   }
 
-  let { b64, mime } = req.body || {};
+  let { b64, mime, lang } = req.body || {};
   if (!b64) {
     return res.status(400).json({ error: "Missing b64 (base64 image data)" });
   }
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
   if (mime === "image/x-ms-bmp") mime = "image/bmp";
 
   try {
-    const report = await runAnalysis(b64, mime);
+    const report = await runAnalysis(b64, mime, lang);
     return res.status(200).json({ report });
   } catch (e) {
     console.error(e);
