@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { Camera, Upload, Sun, Moon, CheckCircle, XCircle, MinusCircle } from "lucide-react";
+import { Camera, Upload, Sun, Moon, CheckCircle, XCircle, MinusCircle, MessageSquare } from "lucide-react";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TRANSLATIONS
@@ -34,6 +34,11 @@ const T = {
     no: "No",
     partially: "Partially",
     newScan: "New scan",
+    noteSection: "Additional notes",
+    notePlaceholder: "Add any scalp issues not covered by the 6 conditions above…",
+    saveNote: "Save note",
+    noteSaved: "Note saved",
+    feedbackSaved: "Thank you, feedback saved",
   },
   zh: {
     uploadTitle: "上传头皮图像",
@@ -58,6 +63,11 @@ const T = {
     no: "否",
     partially: "部分准确",
     newScan: "重新扫描",
+    noteSection: "补充说明",
+    notePlaceholder: "添加上述 6 种状况以外的头皮问题…",
+    saveNote: "保存备注",
+    noteSaved: "备注已保存",
+    feedbackSaved: "感谢您的反馈",
   },
 };
 
@@ -164,6 +174,16 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .accuracy-btn.selected-yes{border-color:var(--sage);background:var(--sage-lt);color:var(--sage)}
 .accuracy-btn.selected-no{border-color:var(--crit);background:var(--crit-lt);color:var(--crit)}
 .accuracy-btn.selected-partial{border-color:var(--amber);background:var(--amber-lt);color:var(--amber)}
+
+/* Note section */
+.note-section{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-top:24px}
+.note-section textarea{width:100%;min-height:80px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg1);font-family:'Outfit',sans-serif;font-size:14px;color:var(--text);resize:vertical;outline:none;transition:border .15s}
+.note-section textarea:focus{border-color:var(--gold)}
+.note-section textarea::placeholder{color:var(--text3)}
+
+/* Toast confirmation */
+@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:10px;background:var(--gold);color:#fff;font-size:14px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.2);z-index:1000;animation:toastIn .3s ease;display:flex;align-items:center;gap:8px}
 `;
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -397,6 +417,22 @@ function UploadSection({ onComplete, lang, t }) {
 
 function ResultsSection({ scan, onNewScan, lang, t }) {
   const [accuracy, setAccuracy] = useState(null); // "yes" | "no" | "partial"
+  const [note, setNote] = useState("");
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const handleAccuracy = (val) => {
+    setAccuracy(val);
+    showToast(t.feedbackSaved);
+  };
+
+  const handleNoteSave = () => {
+    showToast(t.noteSaved);
+  };
 
   if (!scan) {
     return (
@@ -447,6 +483,21 @@ function ResultsSection({ scan, onNewScan, lang, t }) {
         </div>
       </div>
 
+      {/* Note section — for issues not in the 6 */}
+      <div className="note-section">
+        <div className="label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+          <MessageSquare size={14} /> {t.noteSection}
+        </div>
+        <textarea
+          placeholder={t.notePlaceholder}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+        <button className="btn btn-gold" onClick={handleNoteSave} style={{ marginTop: 12 }}>
+          <CheckCircle size={16} /> {t.saveNote}
+        </button>
+      </div>
+
       {/* Accuracy check */}
       <div className="accuracy-section">
         <div className="label" style={{ marginBottom: 4 }}>{t.accuracyCheck}</div>
@@ -454,24 +505,31 @@ function ResultsSection({ scan, onNewScan, lang, t }) {
         <div className="accuracy-btns">
           <button
             className={`accuracy-btn ${accuracy === "yes" ? "selected-yes" : ""}`}
-            onClick={() => setAccuracy("yes")}
+            onClick={() => handleAccuracy("yes")}
           >
             <CheckCircle size={18} /> {t.yes}
           </button>
           <button
             className={`accuracy-btn ${accuracy === "no" ? "selected-no" : ""}`}
-            onClick={() => setAccuracy("no")}
+            onClick={() => handleAccuracy("no")}
           >
             <XCircle size={18} /> {t.no}
           </button>
           <button
             className={`accuracy-btn ${accuracy === "partial" ? "selected-partial" : ""}`}
-            onClick={() => setAccuracy("partial")}
+            onClick={() => handleAccuracy("partial")}
           >
             <MinusCircle size={18} /> {t.partially}
           </button>
         </div>
       </div>
+
+      {/* Confirmation toast */}
+      {toast && (
+        <div className="toast">
+          <CheckCircle size={18} /> {toast}
+        </div>
+      )}
 
       <div style={{ marginTop: 24 }}>
         <button className="btn btn-outline" onClick={onNewScan}><Camera size={16} /> {t.newScan}</button>
