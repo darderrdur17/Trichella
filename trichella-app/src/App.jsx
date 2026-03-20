@@ -4,12 +4,15 @@
  * Dark & light mode support
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Camera, Upload, Sun, Moon, CheckCircle, XCircle, MinusCircle, MessageSquare } from "lucide-react";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TRANSLATIONS
 // ══════════════════════════════════════════════════════════════════════════════
+const STORAGE_CURRENT = "trichella_current_scan";
+const STORAGE_HISTORY = "trichella_scan_history";
+
 const T = {
   en: {
     uploadTitle: "Upload scalp image",
@@ -38,7 +41,10 @@ const T = {
     notePlaceholder: "Add any scalp issues not covered by the 6 conditions above…",
     saveNote: "Save note",
     noteSaved: "Note saved",
+    noteSavedBanner: "Your note is saved and stored with this scan.",
+    dismiss: "Dismiss",
     feedbackSaved: "Thank you, feedback saved",
+    feedbackSavedBanner: "Your feedback is saved.",
   },
   zh: {
     uploadTitle: "上传头皮图像",
@@ -67,7 +73,10 @@ const T = {
     notePlaceholder: "添加上述 6 种状况以外的头皮问题…",
     saveNote: "保存备注",
     noteSaved: "备注已保存",
+    noteSavedBanner: "备注已保存，并与本次扫描一同存储。",
+    dismiss: "关闭",
     feedbackSaved: "感谢您的反馈",
+    feedbackSavedBanner: "反馈已保存。",
   },
 };
 
@@ -183,7 +192,9 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 
 /* Toast confirmation */
 @keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:10px;background:var(--gold);color:#fff;font-size:14px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.2);z-index:1000;animation:toastIn .3s ease;display:flex;align-items:center;gap:8px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);max-width:calc(100% - 32px);padding:14px 22px;border-radius:12px;background:var(--gold);color:#fff;font-size:15px;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:1000;animation:toastIn .35s ease;display:flex;align-items:center;gap:10px}
+.save-banner{margin-top:14px;padding:14px 16px;border-radius:10px;background:var(--sage-lt);border:1px solid var(--sage);color:var(--text);font-size:14px;font-weight:500;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.save-banner button{background:transparent;border:none;color:var(--gold);font-weight:600;cursor:pointer;text-decoration:underline;padding:0;flex-shrink:0}
 `;
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -415,36 +426,48 @@ function UploadSection({ onComplete, lang, t }) {
 // RESULTS — 6 scalp issues
 // ══════════════════════════════════════════════════════════════════════════════
 
-function ResultsSection({ scan, onNewScan, lang, t }) {
-  const [accuracy, setAccuracy] = useState(null); // "yes" | "no" | "partial"
-  const [note, setNote] = useState("");
+function ResultsSection({ scan, onUpdateScan, onNewScan, lang, t }) {
   const [toast, setToast] = useState(null);
+  const [showNoteBanner, setShowNoteBanner] = useState(false);
+  const [showFeedbackBanner, setShowFeedbackBanner] = useState(false);
 
   const showToast = (msg) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 2500);
+    setTimeout(() => setToast(null), 6500);
   };
 
+  useEffect(() => {
+    if (!showNoteBanner) return;
+    const id = setTimeout(() => setShowNoteBanner(false), 12000);
+    return () => clearTimeout(id);
+  }, [showNoteBanner]);
+
+  useEffect(() => {
+    if (!showFeedbackBanner) return;
+    const id = setTimeout(() => setShowFeedbackBanner(false), 12000);
+    return () => clearTimeout(id);
+  }, [showFeedbackBanner]);
+
   const handleAccuracy = (val) => {
-    setAccuracy(val);
+    onUpdateScan({ accuracy: val });
+    setShowFeedbackBanner(true);
     showToast(t.feedbackSaved);
   };
 
   const handleNoteSave = () => {
     showToast(t.noteSaved);
+    setShowNoteBanner(true);
   };
 
-  if (!scan) {
-    return (
-      <div className="card" style={{ textAlign: "center", padding: 48 }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>📋</div>
-        <h3 className="subheading" style={{ marginBottom: 8 }}>{t.noResults}</h3>
-        <p className="body" style={{ marginBottom: 20 }}>{t.noResultsDesc}</p>
-        <button className="btn btn-gold" onClick={onNewScan}><Camera size={16} /> {t.uploadImage}</button>
-      </div>
-    );
-  }
+  useEffect(() => {
+    setShowNoteBanner(false);
+    setShowFeedbackBanner(false);
+  }, [scan?.id]);
 
+  if (!scan) return null;
+
+  const note = scan.note ?? "";
+  const accuracy = scan.accuracy ?? null;
   const { report, preview } = scan;
   const conditions = report?.conditions || [];
   const primary = (report?.primaryCondition || "").toLowerCase();
@@ -491,11 +514,20 @@ function ResultsSection({ scan, onNewScan, lang, t }) {
         <textarea
           placeholder={t.notePlaceholder}
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(e) => {
+            onUpdateScan({ note: e.target.value });
+            setShowNoteBanner(false);
+          }}
         />
         <button className="btn btn-gold" onClick={handleNoteSave} style={{ marginTop: 12 }}>
           <CheckCircle size={16} /> {t.saveNote}
         </button>
+        {showNoteBanner && (
+          <div className="save-banner">
+            <span>{t.noteSavedBanner}</span>
+            <button type="button" onClick={() => setShowNoteBanner(false)}>{t.dismiss}</button>
+          </div>
+        )}
       </div>
 
       {/* Accuracy check */}
@@ -522,6 +554,12 @@ function ResultsSection({ scan, onNewScan, lang, t }) {
             <MinusCircle size={18} /> {t.partially}
           </button>
         </div>
+        {showFeedbackBanner && (
+          <div className="save-banner" style={{ marginTop: 14 }}>
+            <span>{t.feedbackSavedBanner}</span>
+            <button type="button" onClick={() => setShowFeedbackBanner(false)}>{t.dismiss}</button>
+          </div>
+        )}
       </div>
 
       {/* Confirmation toast */}
@@ -544,6 +582,71 @@ function ResultsSection({ scan, onNewScan, lang, t }) {
 
 export default function App() {
   const [scan, setScan] = useState(null);
+  const saveDebounce = useRef(null);
+
+  const archiveCurrentToHistory = useCallback((cur) => {
+    if (!cur?.report) return;
+    try {
+      const hist = JSON.parse(localStorage.getItem(STORAGE_HISTORY) || "[]");
+      hist.unshift({
+        id: cur.id,
+        date: cur.date,
+        preview: cur.preview,
+        report: cur.report,
+        note: cur.note ?? "",
+        accuracy: cur.accuracy ?? null,
+      });
+      localStorage.setItem(STORAGE_HISTORY, JSON.stringify(hist.slice(0, 30)));
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_CURRENT);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p?.report && p?.id) setScan(p);
+      }
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    clearTimeout(saveDebounce.current);
+    if (!scan?.report) return;
+    saveDebounce.current = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_CURRENT, JSON.stringify(scan));
+      } catch (e) {
+        console.warn("Could not persist scan", e);
+      }
+    }, 500);
+    return () => clearTimeout(saveDebounce.current);
+  }, [scan]);
+
+  const updateScan = useCallback((partial) => {
+    setScan((s) => (s ? { ...s, ...partial } : null));
+  }, []);
+
+  const handleAnalysisComplete = useCallback(
+    (newData) => {
+      setScan((cur) => {
+        archiveCurrentToHistory(cur);
+        return { ...newData, note: "", accuracy: null };
+      });
+    },
+    [archiveCurrentToHistory]
+  );
+
+  const handleNewScan = useCallback(() => {
+    setScan((cur) => {
+      archiveCurrentToHistory(cur);
+      try {
+        localStorage.removeItem(STORAGE_CURRENT);
+      } catch (_) {}
+      return null;
+    });
+  }, [archiveCurrentToHistory]);
+
   const [theme, setTheme] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("trichella_theme");
@@ -597,10 +700,12 @@ export default function App() {
           </div>
         </header>
 
-        <UploadSection key={scan ? scan.id : "empty"} onComplete={(s) => setScan(s)} lang={lang} t={t} />
-        <div style={{ marginTop: 32 }}>
-          <ResultsSection scan={scan} onNewScan={() => setScan(null)} lang={lang} t={t} />
-        </div>
+        <UploadSection key={scan ? scan.id : "empty"} onComplete={handleAnalysisComplete} lang={lang} t={t} />
+        {scan && (
+          <div style={{ marginTop: 32 }}>
+            <ResultsSection scan={scan} onUpdateScan={updateScan} onNewScan={handleNewScan} lang={lang} t={t} />
+          </div>
+        )}
       </div>
     </>
   );
