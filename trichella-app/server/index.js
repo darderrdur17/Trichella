@@ -5,6 +5,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { runAnalysis } from "../lib/analyse.js";
+import { uploadScalpImageToDrive } from "../lib/googleDrive.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -33,6 +34,27 @@ app.post("/api/analyse", async (req, res) => {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: e.message || "Analysis failed" });
+  }
+});
+
+app.post("/api/upload-drive", async (req, res) => {
+  const { b64, mime, scanId } = req.body || {};
+  if (!b64) {
+    return res.status(400).json({ error: "Missing b64" });
+  }
+  try {
+    const result = await uploadScalpImageToDrive({
+      base64: b64,
+      mimeType: mime || "image/jpeg",
+      scanId,
+    });
+    if (result.skipped) {
+      return res.json({ skipped: true, message: result.reason });
+    }
+    return res.json({ ok: true, fileId: result.fileId, name: result.name });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: e.message || "Drive upload failed" });
   }
 });
 

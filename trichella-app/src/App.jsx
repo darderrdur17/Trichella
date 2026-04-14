@@ -303,6 +303,38 @@ async function runAI(b64, mime, lang) {
   return report;
 }
 
+/** Upload analysed image to XDi Google Drive (server must have Drive env configured). */
+async function uploadScanToDrive(b64, mime, scanId) {
+  const apiUrl = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL;
+  const base = apiUrl ? apiUrl.replace(/\/$/, "") : "";
+  const log = (msg, extra) => {
+    if (import.meta.env.DEV || import.meta.env.VITE_LOG_DRIVE === "1") {
+      console.warn("[Trichella Drive]", msg, extra ?? "");
+    }
+  };
+  try {
+    const r = await fetch(`${base}/api/upload-drive`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ b64, mime, scanId }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      log(`upload failed HTTP ${r.status}`, data);
+      return;
+    }
+    if (data.skipped) {
+      log("upload skipped (server missing GOOGLE_* env?)", data.message);
+      return;
+    }
+    if (import.meta.env.DEV || import.meta.env.VITE_LOG_DRIVE === "1") {
+      console.info("[Trichella Drive] saved:", data.name || data.fileId);
+    }
+  } catch (e) {
+    log("network error — is the API running? (npm run dev:all)", e?.message);
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // UPLOAD
 // ══════════════════════════════════════════════════════════════════════════════
@@ -339,13 +371,15 @@ function UploadSection({ onComplete, lang, t }) {
     try {
       const { b64, mime } = await toSupportedFormat(file);
       const report = await runAI(b64, mime, lang);
+      const scanId = Date.now().toString();
+      uploadScanToDrive(b64, mime, scanId);
       clearInterval(interval);
       setProgress(100);
       const type = (file.type || "").toLowerCase();
       const ext = (file.name || "").split(".").pop()?.toLowerCase();
       const wasConverted = type.startsWith("video/") || type.includes("bmp") || type === "image/heic" || ["bmp", "wmv", "avi", "mov", "mp4", "webm"].includes(ext);
       const previewForResults = wasConverted ? `data:image/png;base64,${b64}` : preview;
-      setTimeout(() => onComplete({ id: Date.now().toString(), date: new Date().toISOString(), preview: previewForResults, report }), 500);
+      setTimeout(() => onComplete({ id: scanId, date: new Date().toISOString(), preview: previewForResults, report }), 500);
     } catch (e) {
       clearInterval(interval);
       setError(e.message || t.analysisError);

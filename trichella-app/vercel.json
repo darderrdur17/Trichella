@@ -10,6 +10,10 @@
     "api/analyse.js": {
       "maxDuration": 60,
       "memory": 1024
+    },
+    "api/upload-drive.js": {
+      "maxDuration": 60,
+      "memory": 1024
     }
   }
 }
