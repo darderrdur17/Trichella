@@ -2,7 +2,13 @@
  * Google Drive uploads for Trichella — configurable folder(s): one default or separate image / report folders.
  */
 
+import { Readable } from "node:stream";
 import { google } from "googleapis";
+
+/** googleapis multipart upload expects a Readable stream with .pipe(); raw Buffer fails on Vercel. */
+function bufferToStream(buffer) {
+  return Readable.from(Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer));
+}
 
 /** Accepts a raw folder ID or a full `drive.google.com/.../folders/ID` URL (common misconfiguration). */
 export function parseDriveFolderId(raw) {
@@ -109,7 +115,7 @@ async function createFile(drive, folderId, name, buffer, mimeType) {
     },
     media: {
       mimeType,
-      body: buffer,
+      body: bufferToStream(buffer),
     },
     supportsAllDrives: true,
     fields: "id, name",
