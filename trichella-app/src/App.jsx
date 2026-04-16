@@ -45,6 +45,10 @@ const T = {
     dismiss: "Dismiss",
     feedbackSaved: "Thank you, feedback saved",
     feedbackSavedBanner: "Your feedback is saved.",
+    driveSaved: "Scan image and AI report saved to Google Drive.",
+    driveSavedSplitFolders: "Image and report were saved to their respective folders (configured on the server).",
+    driveSkipped: "Google Drive not configured on the server — scans stay on this device only.",
+    driveFailed: "Could not save to Google Drive. Check server logs and folder sharing.",
   },
   zh: {
     uploadTitle: "上传头皮图像",
@@ -77,6 +81,10 @@ const T = {
     dismiss: "关闭",
     feedbackSaved: "感谢您的反馈",
     feedbackSavedBanner: "反馈已保存。",
+    driveSaved: "扫描图像与 AI 报告已保存至 Google Drive。",
+    driveSavedSplitFolders: "图像与报告已分别保存至服务器配置的对应文件夹。",
+    driveSkipped: "服务器未配置 Google Drive — 数据仅保存在本设备。",
+    driveFailed: "无法保存到 Google Drive，请检查服务器日志与文件夹共享。",
   },
 };
 
@@ -288,51 +296,19 @@ function videoFrameToPng(url) {
   });
 }
 
-async function runAI(b64, mime, lang) {
+async function runAI(b64, mime, lang, scanId) {
   const apiUrl = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL;
   const r = await fetch(apiUrl ? `${apiUrl.replace(/\/$/, "")}/api/analyse` : "/api/analyse", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ b64, mime, lang }),
+    body: JSON.stringify({ b64, mime, lang, scanId }),
   });
   if (!r.ok) {
     const err = await r.json().catch(() => ({}));
     throw new Error(err.error || `API ${r.status}`);
   }
-  const { report } = await r.json();
-  return report;
-}
-
-/** Upload analysed image to XDi Google Drive (server must have Drive env configured). */
-async function uploadScanToDrive(b64, mime, scanId) {
-  const apiUrl = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL;
-  const base = apiUrl ? apiUrl.replace(/\/$/, "") : "";
-  const log = (msg, extra) => {
-    if (import.meta.env.DEV || import.meta.env.VITE_LOG_DRIVE === "1") {
-      console.warn("[Trichella Drive]", msg, extra ?? "");
-    }
-  };
-  try {
-    const r = await fetch(`${base}/api/upload-drive`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ b64, mime, scanId }),
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      log(`upload failed HTTP ${r.status}`, data);
-      return;
-    }
-    if (data.skipped) {
-      log("upload skipped (server missing GOOGLE_* env?)", data.message);
-      return;
-    }
-    if (import.meta.env.DEV || import.meta.env.VITE_LOG_DRIVE === "1") {
-      console.info("[Trichella Drive] saved:", data.name || data.fileId);
-    }
-  } catch (e) {
-    log("network error — is the API running? (npm run dev:all)", e?.message);
-  }
+  const data = await r.json();
+  return { report: data.report, drive: data.drive };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -370,16 +346,18 @@ function UploadSection({ onComplete, lang, t }) {
     const interval = setInterval(() => setProgress((p) => Math.min(p + 15, 90)), 400);
     try {
       const { b64, mime } = await toSupportedFormat(file);
-      const report = await runAI(b64, mime, lang);
-      const scanId = Date.now().toString();
-      uploadScanToDrive(b64, mime, scanId);
+      const scanId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const { report, drive } = await runAI(b64, mime, lang, scanId);
+      if (import.meta.env.DEV || import.meta.env.VITE_LOG_DRIVE === "1") {
+        console.info("[Trichella] Drive save result:", drive);
+      }
       clearInterval(interval);
       setProgress(100);
       const type = (file.type || "").toLowerCase();
       const ext = (file.name || "").split(".").pop()?.toLowerCase();
       const wasConverted = type.startsWith("video/") || type.includes("bmp") || type === "image/heic" || ["bmp", "wmv", "avi", "mov", "mp4", "webm"].includes(ext);
       const previewForResults = wasConverted ? `data:image/png;base64,${b64}` : preview;
-      setTimeout(() => onComplete({ id: scanId, date: new Date().toISOString(), preview: previewForResults, report }), 500);
+      setTimeout(() => onComplete({ id: scanId, date: new Date().toISOString(), preview: previewForResults, report, drive }), 500);
     } catch (e) {
       clearInterval(interval);
       setError(e.message || t.analysisError);
@@ -395,17 +373,17 @@ function UploadSection({ onComplete, lang, t }) {
       {!preview ? (
         <div
           className="dropzone"
-          role="button"
-          tabIndex={0}
+                role="button"
+                tabIndex={0}
           onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("drag"); }}
           onDragLeave={(e) => { e.currentTarget.classList.remove("drag"); }}
           onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove("drag"); pick(e.dataTransfer?.files?.[0]); }}
           onClick={() => ref.current?.click()}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ref.current?.click(); } }}
-        >
-          <input
-            ref={ref}
-            type="file"
+              >
+                <input
+                  ref={ref}
+                  type="file"
             accept="image/*,.bmp,image/bmp,video/*,.mp4,.webm,.mov,.wmv,.avi"
             onChange={(e) => { pick(e.target?.files?.[0]); e.target.value = ""; }}
             aria-hidden
@@ -413,9 +391,9 @@ function UploadSection({ onComplete, lang, t }) {
           <div style={{ fontSize: 48, marginBottom: 12 }}>📸</div>
           <h3 className="subheading" style={{ marginBottom: 6 }}>{t.dropHere}</h3>
           <p className="body">{t.orClick}</p>
-        </div>
+              </div>
       ) : (
-        <div>
+                <div>
           {file?.type?.startsWith("video/") ? (
             <video src={preview} controls style={{ width: "100%", maxHeight: 280, objectFit: "cover", borderRadius: 12, marginBottom: 16, border: "1px solid var(--border)" }} />
           ) : (
@@ -435,23 +413,23 @@ function UploadSection({ onComplete, lang, t }) {
                 </>
               )}
             </button>
-          </div>
+        </div>
           {loading && (
             <div style={{ marginTop: 16 }}>
-              <div className="progress-bar">
+            <div className="progress-bar">
                 <div className="progress-fill" style={{ width: `${progress}%` }} />
-              </div>
-              <p className="caption" style={{ marginTop: 6 }}>{progress}%</p>
             </div>
-          )}
+              <p className="caption" style={{ marginTop: 6 }}>{progress}%</p>
         </div>
       )}
+          </div>
+        )}
 
       {error && (
         <div style={{ marginTop: 16, padding: 14, background: "var(--crit-lt)", border: "1px solid var(--crit)", borderRadius: 12, fontSize: 14, color: "var(--crit)" }}>
           ⚠️ {error}
-        </div>
-      )}
+                </div>
+              )}
     </div>
   );
 }
@@ -516,8 +494,32 @@ function ResultsSection({ scan, onUpdateScan, onNewScan, lang, t }) {
           <div style={{ flex: 1, minWidth: 200 }}>
             <h2 className="heading" style={{ marginBottom: 8 }}>{t.sixIssues}</h2>
             <p className="body">{report?.summary || "—"}</p>
-          </div>
-        </div>
+            {scan.drive?.ok && (
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "var(--sage-lt)", border: "1px solid var(--sage)", fontSize: 13, color: "var(--text)" }}>
+                {t.driveSaved}
+                {scan.drive.sameFolder === false && (
+                  <span className="caption" style={{ display: "block", marginTop: 6 }}>{t.driveSavedSplitFolders}</span>
+                )}
+                {(scan.drive.imageName || scan.drive.reportName) && (
+                  <span className="caption" style={{ display: "block", marginTop: 6, wordBreak: "break-all" }}>
+                    {scan.drive.imageName} · {scan.drive.reportName}
+                  </span>
+              )}
+            </div>
+          )}
+            {scan.drive?.skipped && (
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "var(--amber-lt)", border: "1px solid var(--amber)", fontSize: 13, color: "var(--text)" }}>
+                {t.driveSkipped}
+                  </div>
+                )}
+            {scan.drive && scan.drive.ok === false && !scan.drive.skipped && (
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "var(--crit-lt)", border: "1px solid var(--crit)", fontSize: 13, color: "var(--crit)" }}>
+                {t.driveFailed}
+                {scan.drive.error ? ` (${scan.drive.error})` : ""}
+            </div>
+          )}
+                    </div>
+                  </div>
 
         <div className="label" style={{ marginBottom: 12 }}>{t.diagnosis}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
@@ -533,18 +535,18 @@ function ResultsSection({ scan, onUpdateScan, onNewScan, lang, t }) {
                 <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{lang === "zh" ? cond.labelZh : cond.label}</div>
                 <div style={{ fontSize: 12, color: "var(--text3)" }}>
                   {detected ? (isPrimary ? t.primary : t.detected) : "—"}
-                </div>
-              </div>
+                        </div>
+                    </div>
             );
           })}
-        </div>
-      </div>
+                  </div>
+                </div>
 
       {/* Note section — for issues not in the 6 */}
       <div className="note-section">
         <div className="label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
           <MessageSquare size={14} /> {t.noteSection}
-        </div>
+                </div>
         <textarea
           placeholder={t.notePlaceholder}
           value={note}
@@ -555,14 +557,14 @@ function ResultsSection({ scan, onUpdateScan, onNewScan, lang, t }) {
         />
         <button className="btn btn-gold" onClick={handleNoteSave} style={{ marginTop: 12 }}>
           <CheckCircle size={16} /> {t.saveNote}
-        </button>
+                  </button>
         {showNoteBanner && (
           <div className="save-banner">
             <span>{t.noteSavedBanner}</span>
             <button type="button" onClick={() => setShowNoteBanner(false)}>{t.dismiss}</button>
-          </div>
-        )}
-      </div>
+            </div>
+      )}
+    </div>
 
       {/* Accuracy check */}
       <div className="accuracy-section">
@@ -587,7 +589,7 @@ function ResultsSection({ scan, onUpdateScan, onNewScan, lang, t }) {
           >
             <MinusCircle size={18} /> {t.partially}
           </button>
-        </div>
+          </div>
         {showFeedbackBanner && (
           <div className="save-banner" style={{ marginTop: 14 }}>
             <span>{t.feedbackSavedBanner}</span>
@@ -629,6 +631,7 @@ export default function App() {
         report: cur.report,
         note: cur.note ?? "",
         accuracy: cur.accuracy ?? null,
+        drive: cur.drive ?? null,
       });
       localStorage.setItem(STORAGE_HISTORY, JSON.stringify(hist.slice(0, 30)));
     } catch (_) {}
@@ -708,14 +711,14 @@ export default function App() {
   const t = T[lang] || T.en;
 
   return (
-    <>
-      <style>{G}</style>
+      <>
+        <style>{G}</style>
       <div className="app">
         <header className="app-header">
           <div className="logo">
-            <div className="logo-mark">🔬</div>
+              <div className="logo-mark">🔬</div>
             <span className="logo-name">Trichella</span>
-          </div>
+              </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button
               className="lang-btn"
@@ -723,7 +726,7 @@ export default function App() {
               title={lang === "en" ? "切换到中文" : "Switch to English"}
             >
               {lang === "en" ? "中文" : "EN"}
-            </button>
+          </button>
             <button
               className="theme-btn"
               onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
@@ -738,8 +741,8 @@ export default function App() {
         {scan && (
           <div style={{ marginTop: 32 }}>
             <ResultsSection scan={scan} onUpdateScan={updateScan} onNewScan={handleNewScan} lang={lang} t={t} />
-          </div>
-        )}
+              </div>
+            )}
       </div>
     </>
   );

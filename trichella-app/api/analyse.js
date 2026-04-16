@@ -3,6 +3,7 @@
  * Set OPENAI_API_KEY in Vercel project Environment Variables.
  */
 import { runAnalysis } from "../lib/analyse.js";
+import { saveTrichellaScanToDrive } from "../lib/googleDrive.js";
 
 export const config = {
   api: { bodyParser: { sizeLimit: "20mb" } },
@@ -25,7 +26,7 @@ export default async function handler(req, res) {
     });
   }
 
-  let { b64, mime, lang } = req.body || {};
+  let { b64, mime, lang, scanId } = req.body || {};
   if (!b64) {
     return res.status(400).json({ error: "Missing b64 (base64 image data)" });
   }
@@ -34,7 +35,16 @@ export default async function handler(req, res) {
 
   try {
     const report = await runAnalysis(b64, mime, lang);
-    return res.status(200).json({ report });
+    let drive = { skipped: true, reason: "not attempted" };
+    if (process.env.TRICHELLA_DISABLE_DRIVE_SAVE !== "1") {
+      drive = await saveTrichellaScanToDrive({
+        base64: b64,
+        mimeType: mime,
+        report,
+        scanId: scanId || `srv-${Date.now()}`,
+      });
+    }
+    return res.status(200).json({ report, drive });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: e.message || "Analysis failed" });

@@ -1,15 +1,25 @@
 # Save Trichella scans to XDi’s Google Drive
 
-Each successful scalp scan uploads the **same image sent to the AI** into a **Google Drive folder** you choose (for example under **Trichella → Scalp scans** on XDi’s Drive). Uploads run on the **server** (never expose Google keys in the browser).
+Each successful scalp scan uploads the **same image sent to the AI** plus a **JSON report** into **Google Drive folder(s)** you configure (for example **Trichella → Scalp_scans** for images and **Trichella → Reports** for JSON). Uploads run on the **server** (never expose Google keys in the browser).
 
 ## How it works
 
-1. You create a **Google Cloud service account** and a **Drive folder** shared with that account.
-2. You set three environment variables (`GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_DRIVE_FOLDER_ID`).
-3. After analysis succeeds, the app calls `POST /api/upload-drive` with the image; the server uploads a file named like  
-   `Trichella_Scalp_2026-04-14T12-30-00_123456789012.png`.
+1. You create a **Google Cloud service account** and one or more **Drive folders** shared with that account (**Editor**).
+2. You set `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, and at least **`GOOGLE_DRIVE_FOLDER_ID`** (or the optional split-folder variables below).
+3. After analysis succeeds, the server saves in one request:  
+   `Trichella_Scan_<timestamp>_<id>_image.<ext>` and `Trichella_Scan_<timestamp>_<id>_report.json`.  
+   Optional `POST /api/upload-drive` can upload an image only (same image folder).
 
-If those variables are **not** set, uploads are **skipped** and the app still works normally.
+If Drive env vars are **not** set, uploads are **skipped** and the app still works normally.
+
+### One folder vs respective folders
+
+- **Single folder (typical):** set only `GOOGLE_DRIVE_FOLDER_ID`. Both the scalp image and the JSON report are created **inside that folder**.
+- **Split destinations:** set `GOOGLE_DRIVE_IMAGE_FOLDER_ID` and/or `GOOGLE_DRIVE_REPORT_FOLDER_ID`. Any role you omit falls back to `GOOGLE_DRIVE_FOLDER_ID`. You must still set `GOOGLE_DRIVE_FOLDER_ID` unless **both** image and report folder IDs are set explicitly.
+- You may paste either the **raw folder ID** or the **full browser URL** (`…/folders/FOLDER_ID`); the server extracts the ID.
+- Before uploading, the server checks that each ID is a **folder** the service account can open (so file links or wrong shares fail with a clear error).
+
+**XDi two-folder layout (Scalp_scans + Scalp_scans_results):** Use **`Scalp_scans`** for uploaded scalp images and **`Scalp_scans_results`** for JSON reports. Set `GOOGLE_DRIVE_FOLDER_ID` to the **Scalp_scans** folder ID (this also acts as the default for anything not overridden). Set **`GOOGLE_DRIVE_REPORT_FOLDER_ID`** to the **Scalp_scans_results** folder ID. You do not need `GOOGLE_DRIVE_IMAGE_FOLDER_ID` unless you want to override the image folder separately. Share **both** folders with the service account as **Editor**.
 
 ---
 
@@ -57,6 +67,10 @@ If those variables are **not** set, uploads are **skipped** and the app still wo
 GOOGLE_SERVICE_ACCOUNT_EMAIL=trichella-drive@your-project.iam.gserviceaccount.com
 GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"
 GOOGLE_DRIVE_FOLDER_ID=1a2b3c4d5e6f7g8h9i0j
+
+# Optional — different folders for images vs JSON reports (omit to use GOOGLE_DRIVE_FOLDER_ID for that role)
+# GOOGLE_DRIVE_IMAGE_FOLDER_ID=...
+# GOOGLE_DRIVE_REPORT_FOLDER_ID=...
 ```
 
 - Paste the **private key** as one line with `\n` for line breaks, **or** use a multiline string in `.env` if your tooling supports it.
@@ -74,7 +88,7 @@ GOOGLE_DRIVE_FOLDER_ID=1a2b3c4d5e6f7g8h9i0j
 ## Step 5 — Verify
 
 1. Run a scan in Trichella.
-2. Check the Drive folder — a new file `Trichella_Scalp_...` should appear within a few seconds.
+2. Check the configured folder(s) — new files `Trichella_Scan_..._image...` and `Trichella_Scan_..._report.json` should appear within a few seconds (or the legacy `Trichella_Scalp_...` name if using upload-only API).
 3. If nothing appears, check server logs / Vercel function logs for `Drive upload error`.
 
 ---
