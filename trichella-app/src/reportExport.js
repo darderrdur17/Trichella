@@ -6,6 +6,21 @@ import { jsPDF } from "jspdf";
 const BRAND_GREEN = [31, 92, 58];
 const DARK_GREEN  = [14, 47, 31];
 
+/** overallScore = condition burden / severity (higher = worse). Matches App.jsx thresholds. */
+function severityHex(score) {
+  const s = score ?? 0;
+  if (s <= 25) return "#1F5C3A";
+  if (s <= 64) return "#7D6B2A";
+  return "#B45454";
+}
+
+function severityRgb(score) {
+  const s = score ?? 0;
+  if (s <= 25) return [60, 122, 78];
+  if (s <= 64) return [140, 110, 40];
+  return [180, 84, 84];
+}
+
 function fmtDate(iso) {
   try {
     return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
@@ -21,7 +36,7 @@ export function buildMarkdown(scan) {
     ``,
     `**Date:** ${fmtDate(date)}  `,
     `**Report ID:** ${id || "—"}  `,
-    `**Overall Score:** ${r.overallScore ?? "—"}/100  `,
+    `**Condition burden (0–100, higher = more severe):** ${r.overallScore ?? "—"}/100  `,
     `**Primary Condition:** ${r.primaryCondition ?? "—"}  `,
     `**Urgency:** ${(r.urgency ?? "—").toUpperCase()}`,
     r.urgencyReason ? `> ${r.urgencyReason}` : "",
@@ -118,7 +133,7 @@ export function downloadWord(scan) {
   const urgencyBg = { routine: "#2F6E44", monitor: "#7D6B2A", consult: "#B45454" };
   const ub = urgencyBg[r.urgency] ?? "#2F6E44";
 
-  const scoreColor = (r.overallScore ?? 0) >= 75 ? "#1F5C3A" : (r.overallScore ?? 0) >= 50 ? "#7D6B2A" : "#B45454";
+  const scoreColor = severityHex(r.overallScore);
 
   const html = `<!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
@@ -266,7 +281,7 @@ export async function downloadPDF(scan) {
 
   // Score circle (top-right of header)
   const scoreVal = r.overallScore ?? 0;
-  const scoreC = scoreVal >= 75 ? [60, 122, 78] : scoreVal >= 50 ? [140, 110, 40] : [180, 84, 84];
+  const scoreC = severityRgb(scoreVal);
   const cx = W - MARGIN - 18; const cy = 24;
   doc.setFillColor(255, 255, 255, 30);
   doc.circle(cx, cy, 15, "F");

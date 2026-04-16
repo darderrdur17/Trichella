@@ -23,7 +23,7 @@ Use these exact condition name strings in "conditions" and "primaryCondition".
 
 ## JSON output schema — ALL fields required
 {
-  "overallScore": <0-100 integer. 85-100=predominantly healthy; 65-84=mild concern; 45-64=moderate, consistent care needed; 25-44=significant concern; 0-24=urgent clinical assessment recommended>,
+  "overallScore": <0-100 integer — CONDITION BURDEN / SEVERITY INDEX: higher = worse, NOT a "health percentage". 0-15=minimal findings, largely healthy-appearing scalp; 16-34=mild burden; 35-54=moderate; 55-74=significant (e.g. marked inflammation, scaling, or multi-domain issues); 75-100=severe / high alignment with serious primary pathology — urgent clinical assessment often appropriate. When inflammation (or another metric) is High, overallScore must generally be in the upper half of the scale unless other factors clearly offset.>,
   "patientSummary": "<1 sentence, plain friendly language, no jargon, suitable for patient-facing display>",
   "summary": "<exactly 3 clinical sentences: (1) overall impression and primary diagnosis; (2) key metrics — density, sebum level, hydration, inflammation — with visible evidence; (3) clinical significance and appropriate level of care>",
   "primaryCondition": "<exactly one of the 6 condition names>",
@@ -52,14 +52,14 @@ Use these exact condition name strings in "conditions" and "primaryCondition".
   "urgency": "<routine|monitor|consult>",
   "urgencyReason": "<one sentence explaining this urgency classification>",
   "conditions": ["<only from the 6 exact condition names>"],
-  "nextScanDays": <integer 30-90. 30=active issues; 45-60=mild/moderate; 90=healthy/stable>
+  "nextScanDays": <integer 30-90. Higher overallScore (more severe) → shorter interval (e.g. 30-45); lower score (mild) → 60-90>
 }
 
 Output valid JSON ONLY. No markdown fences, no preamble, no explanatory text outside the JSON object.`;
 
-const USER_TASK_EN = `Examine this scalp photograph as a consulting clinical trichologist. Describe only what you can observe in the image. Produce the complete clinical JSON report with a professional summary, specific visual findings, and evidence-based recommendations. Output valid JSON only — no other text or markdown.`;
+const USER_TASK_EN = `Examine this scalp photograph as a consulting clinical trichologist. Describe only what you can observe in the image. Produce the complete clinical JSON report with a professional summary, specific visual findings, and evidence-based recommendations. CRITICAL: overallScore must be a severity/burden index where HIGHER numbers mean MORE severe disease burden (e.g. high inflammation implies a higher score): roughly 0-20 mild/minimal, 80-100 severe. Output valid JSON only — no other text or markdown.`;
 
-const USER_TASK_ZH = `以临床毛发学顾问的身份检查此头皮照片。仅描述图像中可观察到的内容。输出完整的临床 JSON 报告。重要提示：summary、patientSummary、findings 及 recommendations 的内容须使用简体中文，条件名称必须严格使用英文原文："Dry Scalp"、"Oily Scalp"、"Sensitive Scalp"、"Acne Scalp"、"Inflammation Scalp"、"Dandruff Scalp"。仅输出合法 JSON，不含任何其他文字或 markdown。`;
+const USER_TASK_ZH = `以临床毛发学顾问的身份检查此头皮照片。仅描述图像中可观察到的内容。输出完整的临床 JSON 报告。重要：overallScore 为「严重程度/负担指数」，分数越高表示病情负担越重（例如炎症越重分数应越高），0–20 约等于很轻，80–100 约等于很重。summary、patientSummary、findings 及 recommendations 须使用简体中文；条件名称必须严格使用英文原文："Dry Scalp"、"Oily Scalp"、"Sensitive Scalp"、"Acne Scalp"、"Inflammation Scalp"、"Dandruff Scalp"。仅输出合法 JSON，不含任何其他文字或 markdown。`;
 
 function parseReportJson(txt) {
   const cleaned = txt.replace(/```json|```/g, "").trim();

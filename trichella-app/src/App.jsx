@@ -49,6 +49,8 @@ const T = {
     scanPreviewAlt: "Scalp scan preview",
     toggleSectionAria: "Expand or collapse section",
     scoreSuffix: "/ 100",
+    overallScoreLabel: "Condition burden",
+    overallScoreHint: "Higher score = more severe findings",
     // report sections
     patientSummary: "Patient summary",
     clinicalSummary: "Clinical Summary",
@@ -107,6 +109,8 @@ const T = {
     scanPreviewAlt: "头皮扫描预览",
     toggleSectionAria: "展开或收起此区块",
     scoreSuffix: "/ 100",
+    overallScoreLabel: "症状负担",
+    overallScoreHint: "分数越高表示越严重",
     patientSummary: "患者摘要",
     clinicalSummary: "临床摘要",
     scalpMetrics: "头皮指标",
@@ -598,7 +602,9 @@ function ResultsSection({ scan, onUpdateScan, onNewScan, lang, t }) {
   const conditions = r?.conditions || [];
   const primary = (r?.primaryCondition || "").toLowerCase();
   const score = r?.overallScore ?? null;
-  const scoreColor = score === null ? "var(--text3)" : score >= 75 ? "var(--sage)" : score >= 50 ? "var(--amber)" : "var(--crit)";
+  /** Severity index: higher = worse (inverted from old "wellness" scale). */
+  const scoreColor =
+    score === null ? "var(--text3)" : score <= 25 ? "var(--sage)" : score <= 64 ? "var(--amber)" : "var(--crit)";
 
   const urgencyClass = { routine: "urgency-routine", monitor: "urgency-monitor", consult: "urgency-consult" }[r?.urgency] ?? "urgency-routine";
   const urgencyText = { routine: t.urgencyRoutine, monitor: t.urgencyMonitor, consult: t.urgencyConsult }[r?.urgency] ?? r?.urgency;
@@ -620,10 +626,14 @@ function ResultsSection({ scan, onUpdateScan, onNewScan, lang, t }) {
             {scan.date && <div className="caption" style={{ marginLeft: "auto" }}>{formatReportDate(scan.date, lang)}</div>}
           </div>
 
-          {/* Score ring */}
-          <div className="score-ring" style={{ borderColor: scoreColor }}>
-            <span className="score-val" style={{ color: scoreColor }}>{score ?? "—"}</span>
-            <span className="score-lbl">{t.scoreSuffix}</span>
+          {/* Score ring — overallScore = severity (higher = worse) */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+            <div className="label" style={{ textAlign: "center", marginBottom: 0 }}>{t.overallScoreLabel}</div>
+            <div className="score-ring" style={{ borderColor: scoreColor }}>
+              <span className="score-val" style={{ color: scoreColor }}>{score ?? "—"}</span>
+              <span className="score-lbl">{t.scoreSuffix}</span>
+            </div>
+            <span className="caption" style={{ textAlign: "center", maxWidth: 120, lineHeight: 1.35 }}>{t.overallScoreHint}</span>
           </div>
 
           {/* Primary + urgency */}
