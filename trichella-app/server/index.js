@@ -81,7 +81,13 @@ app.get("/api/drive-status", async (req, res) => {
   try {
     const { google } = await import("googleapis");
     const rawKey = process.env.GOOGLE_PRIVATE_KEY.trim().replace(/^"|"$/g, "").replace(/\\n/g, "\n");
-    const auth = new google.auth.JWT({ email, key: rawKey, scopes: ["https://www.googleapis.com/auth/drive"] });
+    const delegatedUser = process.env.GOOGLE_DRIVE_DELEGATED_USER?.trim() || undefined;
+    const auth = new google.auth.JWT({
+      email,
+      key: rawKey,
+      scopes: ["https://www.googleapis.com/auth/drive"],
+      subject: delegatedUser,
+    });
     await auth.authorize();
     const drive = google.drive({ version: "v3", auth });
 
@@ -103,8 +109,11 @@ app.get("/api/drive-status", async (req, res) => {
     return res.json({
       ok: imgCheck.ok && rptCheck.ok,
       serviceAccount: email,
+      domainWideDelegationUser: delegatedUser || null,
       imageFolder: { id: imageFolder, ...imgCheck },
       reportFolder: { id: reportFolder, ...rptCheck },
+      note:
+        "Uploads need Shared drive parents or GOOGLE_DRIVE_DELEGATED_USER — see GOOGLE_DRIVE_SETUP.md (storage quota).",
     });
   } catch (e) {
     console.error("[Drive status]", e);

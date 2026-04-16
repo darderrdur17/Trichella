@@ -36,6 +36,29 @@ function normalizePrivateKey(raw) {
 }
 
 /**
+ * Service accounts have no My Drive storage quota. Uploads to folders in a user's "My Drive"
+ * fail with storageQuotaExceeded unless: (1) folders live on a Shared drive, or (2) JWT uses
+ * domain-wide delegation (subject = Workspace user) so files use that user's quota.
+ */
+export function formatDriveUploadError(err) {
+  const msg = err?.message || String(err);
+  const apiErrors = err?.errors || err?.response?.data?.error?.errors;
+  const reason = apiErrors?.[0]?.reason;
+  if (
+    reason === "storageQuotaExceeded" ||
+    /Service Accounts do not have storage quota|storage quota/i.test(msg)
+  ) {
+    return (
+      "Drive: Service accounts cannot use personal My Drive storage. " +
+      "Move Scalp_scans / Scalp_scans_results into a Google Workspace Shared drive (add the service account as Content manager), " +
+      "or set GOOGLE_DRIVE_DELEGATED_USER to a Workspace user and enable domain-wide delegation for this service account. " +
+      "See trichella-app/GOOGLE_DRIVE_SETUP.md — section “Storage quota (Shared drive or delegation)”."
+    );
+  }
+  return msg;
+}
+
+/**
  * Resolve image vs report folder IDs. Falls back to GOOGLE_DRIVE_FOLDER_ID for any unset role.
  * Optional: GOOGLE_DRIVE_IMAGE_FOLDER_ID, GOOGLE_DRIVE_REPORT_FOLDER_ID for separate destinations.
  */
@@ -68,10 +91,14 @@ async function getDriveClient() {
     return { skipped: true, reason: "Google Drive env vars not set" };
   }
 
+  /** Impersonate a Workspace user (domain-wide delegation) so uploads use that user's quota. */
+  const delegatedUser = process.env.GOOGLE_DRIVE_DELEGATED_USER?.trim() || undefined;
+
   const auth = new google.auth.JWT({
     email: clientEmail,
     key: privateKey,
     scopes: ["https://www.googleapis.com/auth/drive"],
+    subject: delegatedUser,
   });
 
   await auth.authorize();
@@ -190,7 +217,7 @@ export async function saveTrichellaScanToDrive({ base64, mimeType, report, scanI
     return { ok: true, imageName, reportName, sameFolder };
   } catch (e) {
     console.error("[Trichella Drive] saveTrichellaScanToDrive:", e);
-    return { ok: false, error: e.message || "Drive upload failed" };
+    return { ok: false, error: formatDriveUploadError(e) };
   }
 }
 
@@ -227,6 +254,6 @@ export async function uploadScalpImageToDrive({ base64, mimeType, scanId }) {
     return { ok: true, fileId: data.id, name: data.name };
   } catch (e) {
     console.error("[Trichella Drive] uploadScalpImageToDrive:", e);
-    return { ok: false, error: e.message || "Drive upload failed" };
+    return { ok: false, error: formatDriveUploadError(e) };
   }
 }

@@ -12,6 +12,29 @@ Each successful scalp scan uploads the **same image sent to the AI** plus a **JS
 
 If Drive env vars are **not** set, uploads are **skipped** and the app still works normally.
 
+### Storage quota (Shared drive or delegation) — required for uploads
+
+Google **service accounts have no personal Drive storage**. If your `Scalp_scans` folders live under **My Drive** (a user’s private drive), uploads often fail with:
+
+> *Service Accounts do not have storage quota…*
+
+You must use **one** of these approaches:
+
+1. **Shared drive (recommended for teams)**  
+   - In [Google Drive](https://drive.google.com), create or open a **Shared drive** (needs Google Workspace).  
+   - Create `Trichella` → `Scalp_scans` / `Scalp_scans_results` **inside that Shared drive** (not under “My Drive”).  
+   - Add the service account (`…@….iam.gserviceaccount.com`) to the Shared drive with **Content manager** (or **Manager**).  
+   - Update `GOOGLE_DRIVE_FOLDER_ID` / `GOOGLE_DRIVE_REPORT_FOLDER_ID` to the **new** folder IDs from the Shared drive.
+
+2. **Domain-wide delegation (Workspace admin)**  
+   - In [Google Admin Console](https://admin.google.com) → Security → API controls → Domain-wide delegation, authorize your service account’s **Client ID** with OAuth scope:  
+     `https://www.googleapis.com/auth/drive`  
+   - Set env **`GOOGLE_DRIVE_DELEGATED_USER`** to a real user email (e.g. `ops@yourcompany.com`) who **owns** or can write to those folders.  
+   - Trichella will impersonate that user for Drive API calls, so files use **their** quota.  
+   - Details: [Delegating domain-wide authority](https://support.google.com/a/answer/7281227).
+
+Personal Gmail + “share folder with service account” **without** a Shared drive often hits this quota error — move the folders to a Shared drive or use delegation.
+
 ### One folder vs respective folders
 
 - **Single folder (typical):** set only `GOOGLE_DRIVE_FOLDER_ID`. Both the scalp image and the JSON report are created **inside that folder**.
