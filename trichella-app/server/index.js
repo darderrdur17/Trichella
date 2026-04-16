@@ -67,6 +67,52 @@ app.post("/api/upload-drive", async (req, res) => {
   }
 });
 
+/** GET /api/drive-status — diagnose Drive connection without uploading */
+app.get("/api/drive-status", async (req, res) => {
+  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim();
+  const hasKey = !!process.env.GOOGLE_PRIVATE_KEY?.trim();
+  const imageFolder = process.env.GOOGLE_DRIVE_IMAGE_FOLDER_ID?.trim() || process.env.GOOGLE_DRIVE_FOLDER_ID?.trim();
+  const reportFolder = process.env.GOOGLE_DRIVE_REPORT_FOLDER_ID?.trim() || imageFolder;
+
+  if (!email || !hasKey || !imageFolder) {
+    return res.json({ ok: false, reason: "Missing env: GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, or GOOGLE_DRIVE_FOLDER_ID" });
+  }
+
+  try {
+    const { google } = await import("googleapis");
+    const rawKey = process.env.GOOGLE_PRIVATE_KEY.trim().replace(/^"|"$/g, "").replace(/\\n/g, "\n");
+    const auth = new google.auth.JWT({ email, key: rawKey, scopes: ["https://www.googleapis.com/auth/drive"] });
+    await auth.authorize();
+    const drive = google.drive({ version: "v3", auth });
+
+    const checkFolder = async (folderId, label) => {
+      try {
+        const { data } = await drive.files.get({ fileId: folderId, fields: "id,name,mimeType", supportsAllDrives: true });
+        if (data.mimeType !== "application/vnd.google-apps.folder") return { ok: false, error: `ID is not a folder (${data.mimeType})` };
+        return { ok: true, name: data.name };
+      } catch (e) {
+        const code = e?.code || e?.response?.status;
+        if (code === 404) return { ok: false, error: "Folder not found — share it with the service account as Editor" };
+        return { ok: false, error: e.message };
+      }
+    };
+
+    const imgCheck = await checkFolder(imageFolder, "imageFolder");
+    const rptCheck = reportFolder !== imageFolder ? await checkFolder(reportFolder, "reportFolder") : imgCheck;
+
+    return res.json({
+      ok: imgCheck.ok && rptCheck.ok,
+      serviceAccount: email,
+      imageFolder: { id: imageFolder, ...imgCheck },
+      reportFolder: { id: reportFolder, ...rptCheck },
+    });
+  } catch (e) {
+    console.error("[Drive status]", e);
+    return res.json({ ok: false, error: e.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Trichella API (OpenAI) running at http://localhost:${PORT}`);
+  console.log(`Drive status check: http://localhost:${PORT}/api/drive-status`);
 });
