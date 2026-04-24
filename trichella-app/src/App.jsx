@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Sun, Moon, CheckCircle, ArrowLeft, Calendar } from "lucide-react";
+import { Sun, Moon, CheckCircle, ArrowLeft, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // STORAGE KEYS
@@ -21,9 +21,10 @@ const T = {
     customerReport: "Customer Report",
     tabNew: "New",
     tabRegular: "Regular",
+    customerTypeAria: "New or regular customer",
     // form
     customerName: "Name",
-    customerNamePlaceholder: "Customer's name",
+    customerNamePlaceholder: "customer's name",
     nameRequired: "Name is required",
     genderRequired: "Gender is required",
     fillNameGender: "Enter customer name and gender to scan.",
@@ -83,6 +84,7 @@ const T = {
     customerReport: "客户报告",
     tabNew: "新客户",
     tabRegular: "常规",
+    customerTypeAria: "新客户或常规客户",
     customerName: "姓名",
     customerNamePlaceholder: "客户姓名",
     nameRequired: "请输入姓名",
@@ -162,15 +164,18 @@ body{font-family:'Outfit',sans-serif;min-height:100vh;overflow-x:hidden;transiti
   --crit:#B45454; --crit-lt:rgba(180,84,84,.18);
 }
 [data-theme="light"]{
-  --bg:#E8F0E9; --bg1:#FFFFFF; --bg2:#ECF3EE; --bg3:#D4E3D9;
-  --border:rgba(12,40,26,.10); --border2:rgba(12,40,26,.22);
-  --text:#102018; --text2:#4C6254; --text3:#809486;
-  --gold:#1F5C3A;
-  --gold-lt:rgba(31,92,58,.10);
-  --gold-glow:rgba(31,92,58,.25);
-  --sage:#2F6E44; --sage-lt:rgba(47,110,68,.16);
-  --amber:#4A8157; --amber-lt:rgba(74,129,87,.16);
-  --crit:#B04040; --crit-lt:rgba(176,64,64,.16);
+  /* Intake screen — match design reference (#F0F4F2 sage page, #1B4332 headings) */
+  --bg:#F0F4F2; --bg1:#FFFFFF; --bg2:#E8EEEA; --bg3:#D4DED8;
+  --border:rgba(27,67,50,.12); --border2:rgba(27,67,50,.2);
+  --text:#1B4332; --text2:#2D5A45; --text3:#6B8075;
+  --gold:#1B4332;
+  --gold-lt:rgba(27,67,50,.08);
+  --gold-glow:rgba(27,67,50,.2);
+  --sage:#2F6E44; --sage-lt:rgba(47,110,68,.14);
+  --amber:#4A8157; --amber-lt:rgba(74,129,87,.14);
+  --crit:#B04040; --crit-lt:rgba(176,64,64,.14);
+  --intake-tab-track:#E4EBE7;
+  --intake-tab-focus:rgba(107,154,196,.55);
 }
 
 body{background:var(--bg);color:var(--text)}
@@ -179,15 +184,16 @@ body{background:var(--bg);color:var(--text)}
 ::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px}
 
 /* ── Layout ── */
-.app{min-height:100vh;padding:20px;max-width:520px;margin:0 auto}
+.app{min-height:100vh;padding:20px 18px 32px;max-width:520px;margin:0 auto}
 [data-theme="light"] .app{background:transparent}
-.form-page{display:flex;flex-direction:column;gap:16px}
-.app-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:12px}
+.form-page{display:flex;flex-direction:column;gap:12px}
+.app-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px}
 .app-header-left{display:flex;align-items:center;gap:10px}
 
 /* ── Typography ── */
 h1,h2,h3{font-family:'Cormorant Garamond',serif}
-.page-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;letter-spacing:.3px;color:var(--text)}
+.page-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;letter-spacing:.2px;color:var(--text);line-height:1.15}
+[data-theme="light"] .page-title--intake{color:#1B4332}
 .section-title-label{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
 .body-text{font-size:14px;color:var(--text2);line-height:1.6}
 .caption{font-size:12px;color:var(--text3)}
@@ -195,35 +201,61 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 /* ── Header controls ── */
 .theme-btn,.lang-btn{height:36px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-size:13px;font-weight:600;padding:0 10px;gap:6px}
 .theme-btn:hover,.lang-btn:hover{border-color:var(--gold);color:var(--gold)}
+[data-theme="light"] .intake-header-btn{background:#FFFFFF;border:1px solid #D0D8D4;color:#1B4332;font-weight:600}
+[data-theme="light"] .intake-header-btn:hover{border-color:#1B4332;color:#1B4332}
+.input-surface.surface-error{border-color:var(--crit)!important}
 
-/* ── Card ── */
+/* ── Card / white surfaces (intake) ── */
 .card{background:var(--bg1);border:1px solid var(--border);border-radius:14px;padding:20px;transition:border .2s}
+[data-theme="light"] .card--intake{background:#FFFFFF;border:1px solid #D5DED9;box-shadow:0 1px 3px rgba(16,42,30,.06)}
+.input-surface{background:var(--bg1);border:1px solid var(--border);border-radius:14px;padding:14px 16px;position:relative}
+[data-theme="light"] .input-surface{background:#FFFFFF;border:1px solid #D5DED9;box-shadow:0 1px 3px rgba(16,42,30,.06)}
+.input-surface .form-input,.input-surface .form-select{border-color:transparent;background:transparent;padding-left:4px;padding-right:12px}
+.input-surface.has-asterisk .field-asterisk{left:18px;top:23px}
+.input-surface.has-asterisk .form-input,.input-surface.has-asterisk .form-select{padding-left:22px}
+.input-surface .form-input:focus,.input-surface .form-select:focus{border-color:transparent;box-shadow:none;outline:2px solid rgba(27,67,50,.12);outline-offset:0;border-radius:8px}
+[data-theme="dark"] .input-surface .form-input:focus,[data-theme="dark"] .input-surface .form-select:focus{outline-color:rgba(214,232,222,.2)}
+.input-surface .dob-wrap .form-input{padding-right:40px}
+.form-label-dob{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px;letter-spacing:.01em;line-height:1.2}
+[data-theme="light"] .form-label-dob{color:#2D5A45}
+.form-col-spacer{height:24px;margin-bottom:0;flex-shrink:0}
 
 /* ── Buttons ── */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 22px;border-radius:10px;border:none;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
 .btn-solid{background:linear-gradient(135deg,var(--gold),#0E2F1F);color:#F3F7F5;box-shadow:0 4px 18px var(--gold-glow)}
+[data-theme="light"] .btn-solid{background:linear-gradient(180deg,#1B4332,#132A22);color:#FFFFFF;box-shadow:0 4px 14px rgba(27,67,50,.25)}
 .btn-solid:hover{transform:translateY(-1px);box-shadow:0 6px 26px var(--gold-glow)}
+[data-theme="light"] .btn-solid:hover{box-shadow:0 6px 20px rgba(27,67,50,.3)}
 .btn-solid:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .btn-outline{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+[data-theme="light"] .btn-outline{background:#FFFFFF;border:1px solid #1B4332;color:#1B4332}
 .btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+[data-theme="light"] .btn-outline:hover{background:rgba(27,67,50,.06)}
 .btn-full{width:100%}
 
-/* ── Customer type tabs ── */
-.customer-tabs{display:flex;gap:0;margin-bottom:20px;background:var(--bg2);border-radius:10px;padding:4px}
-.tab-btn{flex:1;padding:9px 0;border:none;border-radius:7px;background:transparent;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--text3)}
-.tab-btn.active{background:var(--gold);color:#F3F7F5;box-shadow:0 2px 12px var(--gold-glow)}
+/* ── Customer type tabs (segmented control) ── */
+.customer-tabs{display:flex;gap:0;background:var(--bg2);border-radius:12px;padding:4px;border:1px solid var(--border)}
+[data-theme="light"] .customer-tabs{background:var(--intake-tab-track,#E4EBE7);border:1px solid #D0D8D4}
+.customer-tabs:focus-within{box-shadow:0 0 0 2px var(--intake-tab-focus, rgba(107,154,196,.45))}
+.tab-btn{flex:1;padding:10px 0;border:none;border-radius:9px;background:transparent;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:color .15s,background .15s;color:var(--text2)}
+[data-theme="light"] .tab-btn{color:#1B4332}
+.tab-btn.active{background:var(--gold);color:#F3F7F5;box-shadow:0 1px 4px rgba(27,67,50,.2)}
+[data-theme="light"] .tab-btn.active{background:#1B4332;color:#FFFFFF;box-shadow:0 2px 8px rgba(27,67,50,.18)}
+.tab-btn:not(.active):hover{background:rgba(255,255,255,.35)}
+[data-theme="light"] .tab-btn:not(.active):hover{background:rgba(255,255,255,.5)}
 
 /* ── Form fields ── */
 .form-group{margin-bottom:0}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0}
-.field-wrap{position:relative;margin-bottom:14px}
 .field-asterisk{position:absolute;left:10px;top:10px;z-index:1;color:var(--crit);font-size:14px;font-weight:700;line-height:1;pointer-events:none}
-.field-wrap.has-asterisk .form-input,.field-wrap.has-asterisk .form-select{padding-left:22px}
-.form-input,.form-select{width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--bg1);font-family:'Outfit',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border .15s;appearance:none;-webkit-appearance:none}
+.input-surface .form-error{margin-top:8px}
+.form-input,.form-select{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--bg1);font-family:'Outfit',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border .15s,box-shadow .15s;appearance:none;-webkit-appearance:none}
+[data-theme="light"] .form-input,[data-theme="light"] .form-select{color:#1B4332}
 .form-input:focus,.form-select:focus{border-color:var(--gold)}
 .form-input.error,.form-select.error{border-color:var(--crit)}
-.form-input::placeholder{color:var(--text3)}
-.form-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2381988A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
+.form-input::placeholder{color:var(--text3);opacity:.9}
+[data-theme="light"] .form-input::placeholder{color:#8A9B92}
+.form-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B8075' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
 .form-select option{background:var(--bg1);color:var(--text)}
 .form-label{display:flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
 .form-required{color:var(--crit);font-size:14px}
@@ -231,16 +263,23 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .dob-wrap{position:relative}
 .dob-wrap .form-input{padding-right:40px}
 .dob-wrap .dob-cal-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--gold);pointer-events:none;display:flex}
+[data-theme="light"] .dob-wrap .dob-cal-icon{color:#1B4332}
 
 /* ── Upload section ── */
-.upload-section-label{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px}
-.upload-hint{font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5}
-.dropzone{border:2px dashed var(--border2);border-radius:12px;padding:36px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg1);position:relative}
-.dropzone:hover,.dropzone.drag{border-color:var(--gold);background:var(--gold-lt)}
+.upload-section-label{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:.02em}
+[data-theme="light"] .upload-section-label{color:#1B4332}
+.upload-hint{font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.55;font-weight:500}
+[data-theme="light"] .upload-hint{color:#6B8075}
+.dropzone{border:2px dashed #C5D0CA;border-radius:14px;padding:40px 20px 36px;text-align:center;cursor:pointer;transition:all .2s;background:#FFFFFF;position:relative}
+[data-theme="dark"] .dropzone{background:var(--bg1);border-color:var(--border2)}
+.dropzone:hover,.dropzone.drag{border-color:#1B4332;background:rgba(27,67,50,.04)}
+[data-theme="dark"] .dropzone:hover,[data-theme="dark"] .dropzone.drag{border-color:var(--gold);background:var(--gold-lt)}
 .dropzone input{position:absolute;left:-9999px;width:0;height:0;opacity:0}
 .dropzone-icon{font-size:36px;margin-bottom:8px}
-.dropzone-text{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;color:var(--text)}
-.dropzone-sub{font-size:12px;color:var(--text3);margin-top:4px}
+.dropzone-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;color:#1B4332;letter-spacing:.02em}
+[data-theme="dark"] .dropzone-text{color:var(--text)}
+.dropzone-sub{font-size:12px;color:#6B8075;margin-top:6px;font-weight:500}
+[data-theme="dark"] .dropzone-sub{color:var(--text3)}
 .preview-img{width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid var(--border);display:block}
 .preview-video{width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid var(--border);display:block}
 
@@ -283,7 +322,8 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .summary-text{font-size:14px;color:var(--text2);line-height:1.7;margin-top:8px}
 
 /* ── Metrics (numeric severity colors) ── */
-.metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-top:10px}
+.metrics-collapsible-body{margin-top:12px}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-top:0}
 .metric-cell{border-radius:10px;padding:10px 12px;border:1px solid var(--metric-border, var(--border));background:var(--metric-bg, var(--bg2))}
 .metric-cell-label{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
 .metric-cell-num{font-size:10px;font-weight:700;color:var(--metric-num, var(--text3));margin-bottom:2px;letter-spacing:.3px}
@@ -611,16 +651,16 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
 
   return (
     <div className="form-page">
-      <div className="customer-tabs">
-        <button type="button" className={`tab-btn ${customerType === "new" ? "active" : ""}`} onClick={() => onCustomerTypeChange("new")}>
+      <div className="customer-tabs" role="tablist" aria-label={t.customerTypeAria}>
+        <button type="button" role="tab" aria-selected={customerType === "new"} className={`tab-btn ${customerType === "new" ? "active" : ""}`} onClick={() => onCustomerTypeChange("new")}>
           {t.tabNew}
         </button>
-        <button type="button" className={`tab-btn ${customerType === "regular" ? "active" : ""}`} onClick={() => onCustomerTypeChange("regular")}>
+        <button type="button" role="tab" aria-selected={customerType === "regular"} className={`tab-btn ${customerType === "regular" ? "active" : ""}`} onClick={() => onCustomerTypeChange("regular")}>
           {t.tabRegular}
         </button>
       </div>
 
-      <div className="field-wrap has-asterisk">
+      <div className={`input-surface has-asterisk${nameError ? " surface-error" : ""}`}>
         <span className="field-asterisk" aria-hidden="true">*</span>
         <input
           className={`form-input${nameError ? " error" : ""}`}
@@ -635,23 +675,26 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
       </div>
 
       <div className="form-row">
-        <div className="field-wrap has-asterisk">
-          <span className="field-asterisk" aria-hidden="true">*</span>
-          <select
-            className={`form-select${genderError ? " error" : ""}`}
-            value={gender}
-            onChange={(e) => { setGender(e.target.value); setGenderError(false); }}
-            aria-required
-          >
-            <option value="">{t.genderPlaceholder}</option>
-            <option value="male">{t.genderMale}</option>
-            <option value="female">{t.genderFemale}</option>
-            <option value="other">{t.genderOther}</option>
-          </select>
-          {genderError && <div className="form-error">{t.genderRequired}</div>}
+        <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <div className="form-col-spacer" aria-hidden />
+          <div className={`input-surface has-asterisk${genderError ? " surface-error" : ""}`}>
+            <span className="field-asterisk" aria-hidden="true">*</span>
+            <select
+              className={`form-select${genderError ? " error" : ""}`}
+              value={gender}
+              onChange={(e) => { setGender(e.target.value); setGenderError(false); }}
+              aria-required
+            >
+              <option value="">{t.genderPlaceholder}</option>
+              <option value="male">{t.genderMale}</option>
+              <option value="female">{t.genderFemale}</option>
+              <option value="other">{t.genderOther}</option>
+            </select>
+            {genderError && <div className="form-error">{t.genderRequired}</div>}
+          </div>
         </div>
-        <div>
-          <div className="form-label" style={{ marginBottom: 6 }}>{t.dobLabel}</div>
+        <div className="input-surface" style={{ minWidth: 0 }}>
+          <div className="form-label-dob">{t.dobLabel}</div>
           <div className="dob-wrap">
             <input
               className="form-input"
@@ -666,7 +709,7 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
         </div>
       </div>
 
-      <div className="card">
+      <div className="card card--intake">
         <div className="upload-section-label">{t.uploadScalpImage}</div>
         <div className="upload-hint">{t.uploadHint}</div>
 
@@ -737,6 +780,39 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
 
         {error && <div className="error-box">⚠️ {error}</div>}
       </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COLLAPSIBLE (e.g. scalp metrics dropdown)
+// ══════════════════════════════════════════════════════════════════════════════
+
+function CollapsibleSection({ title, children, defaultOpen = false, ariaLabel }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const a11y = ariaLabel || title;
+  return (
+    <div>
+      <div
+        className="section-header"
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-label={a11y}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((v) => !v);
+          }
+        }}
+      >
+        <span className="section-toggle-title">{title}</span>
+        <span className="toggle-icon" aria-hidden>
+          {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </span>
+      </div>
+      {open && <div className="metrics-collapsible-body">{children}</div>}
     </div>
   );
 }
@@ -837,38 +913,44 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
         </div>
       </div>
 
-      {/* ── Scalp Metrics — all rows, colors from numeric severity index ── */}
+      {/* ── Scalp Metrics — collapsible dropdown ── */}
       <div className="card" style={{ marginBottom: 14 }}>
-        <div className="section-title-label" style={{ marginBottom: 4 }}>{t.scalpMetrics}</div>
-        <p className="caption" style={{ marginBottom: 10 }}>{t.metricScoreHint}</p>
-        <div className="metrics-grid">
-          {metricRows.map((row) => {
-            const sev = metricSeverity0to100(row.raw, row.key);
-            const band = metricBandStyle(sev);
-            const display =
-              row.key === "overallScore"
-                ? (Number.isFinite(Number(row.raw)) ? `${Math.round(Number(row.raw))}/100` : "—")
-                : translateMetricValue(row.raw, lang, t);
-            return (
-              <div
-                key={row.key}
-                className="metric-cell"
-                style={{
-                  borderColor: band.borderColor,
-                  background: band.background,
-                }}
-              >
-                <div className="metric-cell-label">{row.label}</div>
-                {row.key !== "overallScore" && (
-                  <div className="metric-cell-num" style={{ color: band.color }}>
-                    {t.metricSeverityIndex}: {Math.round(sev)}
-                  </div>
-                )}
-                <div className="metric-cell-value" style={{ color: band.color }}>{display}</div>
-              </div>
-            );
-          })}
-        </div>
+        <CollapsibleSection
+          key={scan.id}
+          title={t.scalpMetrics}
+          defaultOpen={false}
+          ariaLabel={`${t.toggleSectionAria}: ${t.scalpMetrics}`}
+        >
+          <p className="caption" style={{ marginBottom: 10 }}>{t.metricScoreHint}</p>
+          <div className="metrics-grid">
+            {metricRows.map((row) => {
+              const sev = metricSeverity0to100(row.raw, row.key);
+              const band = metricBandStyle(sev);
+              const display =
+                row.key === "overallScore"
+                  ? (Number.isFinite(Number(row.raw)) ? `${Math.round(Number(row.raw))}/100` : "—")
+                  : translateMetricValue(row.raw, lang, t);
+              return (
+                <div
+                  key={row.key}
+                  className="metric-cell"
+                  style={{
+                    borderColor: band.borderColor,
+                    background: band.background,
+                  }}
+                >
+                  <div className="metric-cell-label">{row.label}</div>
+                  {row.key !== "overallScore" && (
+                    <div className="metric-cell-num" style={{ color: band.color }}>
+                      {t.metricSeverityIndex}: {Math.round(sev)}
+                    </div>
+                  )}
+                  <div className="metric-cell-value" style={{ color: band.color }}>{display}</div>
+                </div>
+              );
+            })}
+          </div>
+        </CollapsibleSection>
       </div>
 
       {/* ── Feedback ── */}
@@ -1007,6 +1089,7 @@ export default function App() {
 
   const t = T[lang] || T.en;
   const inResults = !!scan;
+  const useIntakeChrome = !inResults && theme === "light";
 
   return (
     <>
@@ -1020,19 +1103,21 @@ export default function App() {
                 <ArrowLeft size={16} />
               </button>
             )}
-            <span className="page-title">{inResults ? t.customerReport : t.pageTitle}</span>
+            <span className={`page-title${useIntakeChrome ? " page-title--intake" : ""}`}>{inResults ? t.customerReport : t.pageTitle}</span>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button
-              className="lang-btn"
+              type="button"
+              className={`lang-btn${useIntakeChrome ? " intake-header-btn" : ""}`}
               onClick={() => setLang((l) => (l === "en" ? "zh" : "en"))}
               title={lang === "en" ? "切换到中文" : "Switch to English"}
             >
               {lang === "en" ? "中文" : "EN"}
             </button>
             <button
-              className="theme-btn"
-              onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+              type="button"
+              className={`theme-btn${useIntakeChrome ? " intake-header-btn" : ""}`}
+              onClick={() => setTheme((th) => (th === "dark" ? "light" : "dark"))}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
               {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
