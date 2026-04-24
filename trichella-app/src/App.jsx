@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Sun, Moon, CheckCircle, ArrowLeft, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle, ArrowLeft, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // STORAGE KEYS
@@ -201,8 +201,8 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .caption{font-size:12px;color:var(--text3)}
 
 /* ── Header controls ── */
-.theme-btn,.lang-btn{height:36px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-size:13px;font-weight:600;padding:0 10px;gap:6px}
-.theme-btn:hover,.lang-btn:hover{border-color:var(--gold);color:var(--gold)}
+.lang-btn{height:36px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-size:13px;font-weight:600;padding:0 10px;gap:6px}
+.lang-btn:hover{border-color:var(--gold);color:var(--gold)}
 [data-theme="light"] .intake-header-btn{background:#FFFFFF;border:1px solid #D0D8D4;color:#1B4332;font-weight:600}
 [data-theme="light"] .intake-header-btn:hover{border-color:#1B4332;color:#1B4332}
 .input-surface.surface-error{border-color:var(--crit)!important}
@@ -324,8 +324,8 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 [data-theme="dark"] .card-primary-focus{border-color:rgba(129,180,255,.38)}
 
 /* ── Diagnosis section ── */
-.diagnosis-layout{display:flex;gap:14px;align-items:flex-start;margin-top:10px}
-.diagnosis-thumb{width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--border);flex-shrink:0}
+.diagnosis-layout{display:flex;gap:16px;align-items:flex-start;margin-top:10px}
+.diagnosis-thumb{width:136px;height:136px;min-width:136px;object-fit:cover;border-radius:12px;border:1px solid var(--border);flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .diagnosis-bullets{list-style:disc;padding-left:18px;display:flex;flex-direction:column;gap:7px}
 .diagnosis-bullets li{font-size:13px;color:var(--text2);line-height:1.5}
 
@@ -339,6 +339,14 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .metric-cell-label{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
 .metric-cell-num{font-size:10px;font-weight:700;color:var(--metric-num, var(--text3));margin-bottom:2px;letter-spacing:.3px}
 .metric-cell-value{font-size:13px;font-weight:700;color:var(--metric-fg, var(--text))}
+.metric-cell--primary{background:rgba(27,67,50,.1)!important;border-color:#1B4332!important}
+.metric-cell--primary .metric-cell-label{color:#4A5C54}
+.metric-cell--primary .metric-cell-num,.metric-cell--primary .metric-cell-value{color:#1B4332}
+.metric-cell--muted{background:#ECEEED!important;border-color:rgba(108,118,112,.28)!important}
+.metric-cell--muted .metric-cell-label,.metric-cell--muted .metric-cell-num,.metric-cell--muted .metric-cell-value{color:#7A8580}
+.btn-send-report{background:#1B4332!important;color:#FFFFFF!important;box-shadow:0 3px 12px rgba(27,67,50,.22)!important}
+.btn-send-report:hover{filter:brightness(1.05);box-shadow:0 4px 16px rgba(27,67,50,.28)!important}
+.btn-send-report:disabled{opacity:.5;filter:none}
 
 /* ── Urgency badge ── */
 .urgency-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px}
@@ -423,6 +431,28 @@ function translateMetricValue(raw, lang, t) {
   return map[s.toLowerCase().replace(/\s+/g, "")] || s;
 }
 
+/** Metric keys most relevant to each primary condition (shown in green on the report). */
+const PRIMARY_METRICS_BY_CONDITION = {
+  sensitive: ["hydration", "scalpType", "inflammation"],
+  oily: ["sebumLevel", "scalpType"],
+  dry: ["hydration", "density"],
+  acne: ["follicleHealth", "inflammation"],
+  inflammation: ["inflammation", "hydration", "follicleHealth"],
+  dandruff: ["sebumLevel", "scalpType", "density"],
+};
+
+function primaryConditionIdFromLabel(primaryLabel) {
+  const p = (primaryLabel || "").trim().toLowerCase();
+  const hit = DIAG_CONDITIONS.find((c) => p.includes(c.id) || p === c.label.toLowerCase());
+  return hit?.id ?? null;
+}
+
+function isMetricPrimaryAligned(metricKey, primaryCondId) {
+  if (!primaryCondId) return false;
+  const keys = PRIMARY_METRICS_BY_CONDITION[primaryCondId];
+  return Array.isArray(keys) && keys.includes(metricKey);
+}
+
 /** Parse Low / Medium / High from EN or ZH strings. */
 function parseLmhToken(raw) {
   const s = String(raw ?? "").trim().toLowerCase();
@@ -481,18 +511,6 @@ function metricSeverity0to100(raw, metricKey) {
     default:
       return 48;
   }
-}
-
-/** Tier colors from numeric severity (0–100): green / amber / red. */
-function metricBandStyle(score0to100) {
-  const v = Math.max(0, Math.min(100, score0to100));
-  if (v <= 33) {
-    return { borderColor: "var(--sage)", background: "var(--sage-lt)", color: "var(--sage)" };
-  }
-  if (v <= 66) {
-    return { borderColor: "var(--amber)", background: "var(--amber-lt)", color: "var(--amber)" };
-  }
-  return { borderColor: "var(--crit)", background: "var(--crit-lt)", color: "var(--crit)" };
 }
 
 function formatDate(iso, lang) {
@@ -581,7 +599,7 @@ async function runAI(b64, mime, lang, scanId) {
 // CUSTOMER FORM + UPLOAD
 // ══════════════════════════════════════════════════════════════════════════════
 
-function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerTypeChange, theme }) {
+function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerTypeChange }) {
   const [name, setName] = useState("");
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
@@ -709,7 +727,7 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
                 value={dob}
                 onChange={(e) => setDob(e.target.value)}
                 aria-label={t.dobLabel}
-                style={{ colorScheme: theme === "light" ? "light" : "dark" }}
+                style={{ colorScheme: "light" }}
               />
               <span className="dob-cal-icon" aria-hidden><Calendar size={18} strokeWidth={2} /></span>
             </div>
@@ -849,6 +867,7 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
   const conditions = r?.conditions || [];
   const primaryLabel = r?.primaryCondition || "";
   const primaryLc = primaryLabel.toLowerCase();
+  const primaryCondId = primaryConditionIdFromLabel(primaryLabel);
 
   const detectedConditionTags = DIAG_CONDITIONS.filter((c) =>
     conditions.some((rc) => {
@@ -954,22 +973,18 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
           <div className="metrics-grid">
             {metricRows.map((row) => {
               const sev = metricSeverity0to100(row.raw, row.key);
-              const band = metricBandStyle(sev);
               const display = translateMetricValue(row.raw, lang, t);
+              const primaryAligned = isMetricPrimaryAligned(row.key, primaryCondId);
               return (
                 <div
                   key={row.key}
-                  className="metric-cell"
-                  style={{
-                    borderColor: band.borderColor,
-                    background: band.background,
-                  }}
+                  className={`metric-cell${primaryAligned ? " metric-cell--primary" : " metric-cell--muted"}`}
                 >
                   <div className="metric-cell-label">{row.label}</div>
-                  <div className="metric-cell-num" style={{ color: band.color }}>
+                  <div className="metric-cell-num">
                     {t.metricSeverityIndex}: {Math.round(sev)}
                   </div>
-                  <div className="metric-cell-value" style={{ color: band.color }}>{display}</div>
+                  <div className="metric-cell-value">{display}</div>
                 </div>
               );
             })}
@@ -1010,7 +1025,8 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
         />
 
         <button
-          className="btn btn-solid btn-full"
+          type="button"
+          className="btn btn-solid btn-full btn-send-report"
           style={{ marginTop: 14 }}
           onClick={handleSend}
           disabled={feedbackSent}
@@ -1087,24 +1103,14 @@ export default function App() {
     });
   }, [archiveCurrentToHistory]);
 
-  const [theme, setTheme] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("trichella_theme");
-      if (saved) return saved;
-      return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-    }
-    return "dark";
-  });
-
   const [lang, setLang] = useState(() => {
     if (typeof window !== "undefined") return localStorage.getItem("trichella_lang") || "en";
     return "en";
   });
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("trichella_theme", theme);
-  }, [theme]);
+    document.documentElement.setAttribute("data-theme", "light");
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("trichella_lang", lang);
@@ -1113,7 +1119,7 @@ export default function App() {
 
   const t = T[lang] || T.en;
   const inResults = !!scan;
-  const useIntakeChrome = !inResults && theme === "light";
+  const useIntakeChrome = !inResults;
 
   return (
     <>
@@ -1138,14 +1144,6 @@ export default function App() {
             >
               {lang === "en" ? "中文" : "EN"}
             </button>
-            <button
-              type="button"
-              className={`theme-btn${useIntakeChrome ? " intake-header-btn" : ""}`}
-              onClick={() => setTheme((th) => (th === "dark" ? "light" : "dark"))}
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
           </div>
         </header>
 
@@ -1156,7 +1154,6 @@ export default function App() {
             onComplete={handleAnalysisComplete}
             lang={lang}
             t={t}
-            theme={theme}
             customerType={customerType}
             onCustomerTypeChange={setCustomerType}
           />
