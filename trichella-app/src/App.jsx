@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Upload, Sun, Moon, CheckCircle, XCircle, ChevronDown, ChevronUp, Activity, ArrowLeft } from "lucide-react";
+import { Sun, Moon, CheckCircle, ArrowLeft, Calendar } from "lucide-react";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // STORAGE KEYS
@@ -23,7 +23,10 @@ const T = {
     tabRegular: "Regular",
     // form
     customerName: "Name",
+    customerNamePlaceholder: "Customer's name",
     nameRequired: "Name is required",
+    genderRequired: "Gender is required",
+    fillNameGender: "Enter customer name and gender to scan.",
     genderPlaceholder: "Gender",
     genderMale: "Male",
     genderFemale: "Female",
@@ -69,10 +72,10 @@ const T = {
     scalpCombination: "Combination",
     scalpSensitive: "Sensitive",
     toggleSectionAria: "Expand or collapse section",
-    urgencyRoutine: "Routine — self-care sufficient",
-    urgencyMonitor: "Monitor — recheck in 2–4 weeks",
-    urgencyConsult: "Consult — professional evaluation recommended",
     scanPreviewAlt: "Scalp scan preview",
+    metricConditionBurden: "Condition burden",
+    metricScoreHint: "0–100 · higher = more severe",
+    metricSeverityIndex: "Severity index",
   },
   zh: {
     pageTitle: "头皮检测",
@@ -80,7 +83,10 @@ const T = {
     tabNew: "新客户",
     tabRegular: "常规",
     customerName: "姓名",
+    customerNamePlaceholder: "客户姓名",
     nameRequired: "请输入姓名",
+    genderRequired: "请选择性别",
+    fillNameGender: "请填写客户姓名和性别后再扫描。",
     genderPlaceholder: "性别",
     genderMale: "男",
     genderFemale: "女",
@@ -124,10 +130,10 @@ const T = {
     scalpCombination: "混合",
     scalpSensitive: "敏感",
     toggleSectionAria: "展开或收起此区块",
-    urgencyRoutine: "常规 — 自我护理即可",
-    urgencyMonitor: "观察 — 2–4 周后复查",
-    urgencyConsult: "就诊 — 建议专业评估",
     scanPreviewAlt: "头皮扫描预览",
+    metricConditionBurden: "症状负担指数",
+    metricScoreHint: "0–100 · 越高越严重",
+    metricSeverityIndex: "严重度指数",
   },
 };
 
@@ -154,7 +160,7 @@ body{font-family:'Outfit',sans-serif;min-height:100vh;overflow-x:hidden;transiti
   --crit:#B45454; --crit-lt:rgba(180,84,84,.18);
 }
 [data-theme="light"]{
-  --bg:#F5F4EF; --bg1:#FFFFFF; --bg2:#ECF3EE; --bg3:#D4E3D9;
+  --bg:#E8F0E9; --bg1:#FFFFFF; --bg2:#ECF3EE; --bg3:#D4E3D9;
   --border:rgba(12,40,26,.10); --border2:rgba(12,40,26,.22);
   --text:#102018; --text2:#4C6254; --text3:#809486;
   --gold:#1F5C3A;
@@ -172,6 +178,8 @@ body{background:var(--bg);color:var(--text)}
 
 /* ── Layout ── */
 .app{min-height:100vh;padding:20px;max-width:520px;margin:0 auto}
+[data-theme="light"] .app{background:transparent}
+.form-page{display:flex;flex-direction:column;gap:16px}
 .app-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:12px}
 .app-header-left{display:flex;align-items:center;gap:10px}
 
@@ -204,26 +212,32 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .tab-btn.active{background:var(--gold);color:#F3F7F5;box-shadow:0 2px 12px var(--gold-glow)}
 
 /* ── Form fields ── */
-.form-group{margin-bottom:14px}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.form-group{margin-bottom:0}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0}
+.field-wrap{position:relative;margin-bottom:14px}
+.field-asterisk{position:absolute;left:10px;top:10px;z-index:1;color:var(--crit);font-size:14px;font-weight:700;line-height:1;pointer-events:none}
+.field-wrap.has-asterisk .form-input,.field-wrap.has-asterisk .form-select{padding-left:22px}
 .form-input,.form-select{width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--bg1);font-family:'Outfit',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border .15s;appearance:none;-webkit-appearance:none}
 .form-input:focus,.form-select:focus{border-color:var(--gold)}
-.form-input.error{border-color:var(--crit)}
+.form-input.error,.form-select.error{border-color:var(--crit)}
 .form-input::placeholder{color:var(--text3)}
 .form-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2381988A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
 .form-select option{background:var(--bg1);color:var(--text)}
 .form-label{display:flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
 .form-required{color:var(--crit);font-size:14px}
 .form-error{font-size:12px;color:var(--crit);margin-top:4px}
+.dob-wrap{position:relative}
+.dob-wrap .form-input{padding-right:40px}
+.dob-wrap .dob-cal-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--gold);pointer-events:none;display:flex}
 
 /* ── Upload section ── */
-.upload-section-label{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;margin-top:6px}
+.upload-section-label{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px}
 .upload-hint{font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5}
 .dropzone{border:2px dashed var(--border2);border-radius:12px;padding:36px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg1);position:relative}
 .dropzone:hover,.dropzone.drag{border-color:var(--gold);background:var(--gold-lt)}
 .dropzone input{position:absolute;left:-9999px;width:0;height:0;opacity:0}
 .dropzone-icon{font-size:36px;margin-bottom:8px}
-.dropzone-text{font-size:14px;font-weight:500;color:var(--text2)}
+.dropzone-text{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;color:var(--text)}
 .dropzone-sub{font-size:12px;color:var(--text3);margin-top:4px}
 .preview-img{width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid var(--border);display:block}
 .preview-video{width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid var(--border);display:block}
@@ -249,6 +263,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .patient-name{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;color:var(--text)}
 .patient-id{font-size:13px;font-weight:600;color:var(--text3)}
 .patient-date{font-size:12px;color:var(--text3)}
+.primary-inline{margin-top:10px;font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:700;padding:8px 14px;border-radius:10px;display:inline-block;border:1px solid transparent}
 
 /* ── Condition pills ── */
 .condition-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
@@ -265,11 +280,12 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 /* ── Summary ── */
 .summary-text{font-size:14px;color:var(--text2);line-height:1.7;margin-top:8px}
 
-/* ── Metrics ── */
-.metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px}
-.metric-cell{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 12px}
-.metric-cell-label{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:3px}
-.metric-cell-value{font-size:13px;font-weight:700;color:var(--text)}
+/* ── Metrics (numeric severity colors) ── */
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-top:10px}
+.metric-cell{border-radius:10px;padding:10px 12px;border:1px solid var(--metric-border, var(--border));background:var(--metric-bg, var(--bg2))}
+.metric-cell-label{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.metric-cell-num{font-size:10px;font-weight:700;color:var(--metric-num, var(--text3));margin-bottom:2px;letter-spacing:.3px}
+.metric-cell-value{font-size:13px;font-weight:700;color:var(--metric-fg, var(--text))}
 
 /* ── Urgency badge ── */
 .urgency-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px}
@@ -332,6 +348,103 @@ function translateMetricValue(raw, lang, t) {
     combination: t.scalpCombination, sensitive: t.scalpSensitive,
   };
   return map[s.toLowerCase().replace(/\s+/g, "")] || s;
+}
+
+/** Parse Low / Medium / High from EN or ZH strings. */
+function parseLmhToken(raw) {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (!s) return null;
+  if (/\blow\b|^低|干燥.*低|低\s*$/i.test(s)) return "low";
+  if (/\bmed\b|\bmedium\b|^中|中等/i.test(s)) return "medium";
+  if (/\bhigh\b|^高|高\s*$/i.test(s)) return "high";
+  return null;
+}
+
+/** Map L/M/H to a 0–100 severity where higher = worse. If invert, high raw → low severity. */
+function lmhToSeverity0to100(tri, invert) {
+  const t = tri || "medium";
+  let x = t === "low" ? 24 : t === "medium" ? 52 : 84;
+  if (invert) x = 100 - x;
+  return x;
+}
+
+/**
+ * Numeric severity 0–100 (higher = more concerning) per metric for color bands.
+ * Uses explicit numeric rules: percentages, L/M/H, and scalp type mapping.
+ */
+function metricSeverity0to100(raw, metricKey) {
+  const s = String(raw ?? "").trim().toLowerCase();
+  const compact = s.replace(/\s+/g, "");
+  const pctMatch = String(raw ?? "").match(/(\d+(?:\.\d+)?)\s*%/);
+  const pct = pctMatch ? parseFloat(pctMatch[1]) : NaN;
+
+  switch (metricKey) {
+    case "overallScore": {
+      const n = Number(raw);
+      return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 48;
+    }
+    case "density":
+      return lmhToSeverity0to100(parseLmhToken(s), true);
+    case "inflammation":
+      return lmhToSeverity0to100(parseLmhToken(s), false);
+    case "follicleHealth":
+      return lmhToSeverity0to100(parseLmhToken(s), true);
+    case "hydration":
+      return lmhToSeverity0to100(parseLmhToken(s), true);
+    case "sebumLevel":
+      if (Number.isFinite(pct)) {
+        return Math.min(100, Math.max(0, Math.abs(pct - 42) * 2.08));
+      }
+      return lmhToSeverity0to100(parseLmhToken(s), false);
+    case "scalpType": {
+      if (compact.includes("sensitive")) return 68;
+      if (compact.includes("combination") || compact.includes("混合")) return 48;
+      if (compact.includes("oily") || compact.includes("油")) return 60;
+      if (compact.includes("dry") || compact.includes("干")) return 52;
+      if (compact.includes("normal") || compact.includes("正常")) return 22;
+      const map = { normal: 22, dry: 52, oily: 60, combination: 48, sensitive: 68 };
+      return map[compact] ?? 44;
+    }
+    default:
+      return 48;
+  }
+}
+
+/** Tier colors from numeric severity (0–100): green / amber / red. */
+function metricBandStyle(score0to100) {
+  const v = Math.max(0, Math.min(100, score0to100));
+  if (v <= 33) {
+    return { borderColor: "var(--sage)", background: "var(--sage-lt)", color: "var(--sage)" };
+  }
+  if (v <= 66) {
+    return { borderColor: "var(--amber)", background: "var(--amber-lt)", color: "var(--amber)" };
+  }
+  return { borderColor: "var(--crit)", background: "var(--crit-lt)", color: "var(--crit)" };
+}
+
+function primaryConditionBadgeStyle(overallScore) {
+  const n = Number(overallScore);
+  const s = Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 48;
+  const band = metricBandStyle(s);
+  return {
+    ...band,
+    display: "inline-block",
+    marginTop: 10,
+    padding: "8px 14px",
+    borderRadius: 10,
+    fontWeight: 700,
+    fontFamily: "'Cormorant Garamond', serif",
+    fontSize: 16,
+    borderWidth: 1,
+    borderStyle: "solid",
+  };
+}
+
+function primaryConditionDisplayLabel(primaryLabel, lang) {
+  const p = (primaryLabel || "").trim().toLowerCase();
+  const hit = DIAG_CONDITIONS.find((c) => p.includes(c.id) || p === c.label.toLowerCase());
+  if (hit) return lang === "zh" ? hit.labelZh : hit.label;
+  return primaryLabel?.trim() || "—";
 }
 
 function formatDate(iso, lang) {
@@ -420,7 +533,7 @@ async function runAI(b64, mime, lang, scanId) {
 // CUSTOMER FORM + UPLOAD
 // ══════════════════════════════════════════════════════════════════════════════
 
-function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerTypeChange }) {
+function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerTypeChange, theme }) {
   const [name, setName] = useState("");
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
@@ -430,7 +543,10 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const [nameError, setNameError] = useState(false);
+  const [genderError, setGenderError] = useState(false);
   const fileRef = useRef();
+
+  const canScan = Boolean(name.trim() && gender && file);
 
   const pick = (f) => {
     if (!f) return;
@@ -451,8 +567,12 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
   };
 
   const handleScan = async () => {
-    if (!name.trim()) { setNameError(true); return; }
     if (!file) return;
+    const ne = !name.trim();
+    const ge = !gender;
+    setNameError(ne);
+    setGenderError(ge);
+    if (ne || ge) return;
     setLoading(true);
     setProgress(0);
     setError(null);
@@ -488,142 +608,130 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
   };
 
   return (
-    <div className="card">
-      {/* ── Customer type tabs ── */}
+    <div className="form-page">
       <div className="customer-tabs">
-        <button className={`tab-btn ${customerType === "new" ? "active" : ""}`} onClick={() => onCustomerTypeChange("new")}>
+        <button type="button" className={`tab-btn ${customerType === "new" ? "active" : ""}`} onClick={() => onCustomerTypeChange("new")}>
           {t.tabNew}
         </button>
-        <button className={`tab-btn ${customerType === "regular" ? "active" : ""}`} onClick={() => onCustomerTypeChange("regular")}>
+        <button type="button" className={`tab-btn ${customerType === "regular" ? "active" : ""}`} onClick={() => onCustomerTypeChange("regular")}>
           {t.tabRegular}
         </button>
       </div>
 
-      {/* ── Name ── */}
-      <div className="form-group">
-        <div className="form-label">
-          <span className="form-required">*</span>
-        </div>
+      <div className="field-wrap has-asterisk">
+        <span className="field-asterisk" aria-hidden="true">*</span>
         <input
           className={`form-input${nameError ? " error" : ""}`}
           type="text"
-          placeholder={t.customerName}
+          placeholder={t.customerNamePlaceholder}
           value={name}
           onChange={(e) => { setName(e.target.value); setNameError(false); }}
           autoComplete="name"
+          aria-required
         />
         {nameError && <div className="form-error">{t.nameRequired}</div>}
       </div>
 
-      {/* ── Gender + DOB ── */}
       <div className="form-row">
-        <select
-          className="form-select"
-          value={gender}
-          onChange={(e) => setGender(e.target.value)}
-        >
-          <option value="">{t.genderPlaceholder}</option>
-          <option value="male">{t.genderMale}</option>
-          <option value="female">{t.genderFemale}</option>
-          <option value="other">{t.genderOther}</option>
-        </select>
-        <input
-          className="form-input"
-          type="date"
-          value={dob}
-          onChange={(e) => setDob(e.target.value)}
-          placeholder={t.dobPlaceholder}
-          style={{ colorScheme: "dark" }}
-        />
-      </div>
-
-      {/* ── Upload ── */}
-      <div className="upload-section-label">{t.uploadScalpImage}</div>
-      <div className="upload-hint">{t.uploadHint}</div>
-
-      {!preview ? (
-        <div
-          className="dropzone"
-          role="button"
-          tabIndex={0}
-          onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("drag"); }}
-          onDragLeave={(e) => { e.currentTarget.classList.remove("drag"); }}
-          onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove("drag"); pick(e.dataTransfer?.files?.[0]); }}
-          onClick={() => fileRef.current?.click()}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }}
-        >
+        <div className="field-wrap has-asterisk">
+          <span className="field-asterisk" aria-hidden="true">*</span>
+          <select
+            className={`form-select${genderError ? " error" : ""}`}
+            value={gender}
+            onChange={(e) => { setGender(e.target.value); setGenderError(false); }}
+            aria-required
+          >
+            <option value="">{t.genderPlaceholder}</option>
+            <option value="male">{t.genderMale}</option>
+            <option value="female">{t.genderFemale}</option>
+            <option value="other">{t.genderOther}</option>
+          </select>
+          {genderError && <div className="form-error">{t.genderRequired}</div>}
+        </div>
+        <div className="dob-wrap">
           <input
-            ref={fileRef}
-            type="file"
-            accept="image/*,.bmp,image/bmp,video/*,.mp4,.webm,.mov,.wmv,.avi"
-            onChange={(e) => { pick(e.target?.files?.[0]); e.target.value = ""; }}
-            aria-hidden
+            className="form-input"
+            type="date"
+            value={dob}
+            onChange={(e) => setDob(e.target.value)}
+            aria-label={t.dobPlaceholder}
+            style={{ colorScheme: theme === "light" ? "light" : "dark" }}
           />
-          <div className="dropzone-icon">📸</div>
-          <div className="dropzone-text">{t.dropHere}</div>
-          <div className="dropzone-sub">{t.orClick}</div>
+          <span className="dob-cal-icon" aria-hidden><Calendar size={18} strokeWidth={2} /></span>
         </div>
-      ) : (
-        <div>
-          {file?.type?.startsWith("video/") ? (
-            <video src={preview} controls className="preview-video" />
-          ) : (
-            <img src={preview} alt={t.scanPreviewAlt} className="preview-img" />
-          )}
-        </div>
-      )}
-
-      {/* ── Scan / Cancel buttons (only once image is picked) ── */}
-      {preview && !loading && (
-        <div className="action-row">
-          <button className="btn btn-outline" style={{ flex: 1 }} onClick={handleCancel}>
-            {t.cancel}
-          </button>
-          <button className="btn btn-solid" style={{ flex: 1 }} onClick={handleScan}>
-            {t.scan}
-          </button>
-        </div>
-      )}
-
-      {loading && (
-        <div style={{ marginTop: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span className="spinner" style={{ width: 18, height: 18 }} />
-            <span className="caption">{t.analysing}</span>
-          </div>
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${progress}%` }} />
-          </div>
-        </div>
-      )}
-
-      {error && <div className="error-box">⚠️ {error}</div>}
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// COLLAPSIBLE SECTION (used for Scalp Metrics)
-// ══════════════════════════════════════════════════════════════════════════════
-
-function CollapsibleSection({ title, children, defaultOpen = true }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div>
-      <div
-        className="section-header"
-        role="button"
-        tabIndex={0}
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((v) => !v); } }}
-      >
-        <span className="section-toggle-title">{title}</span>
-        <span className="toggle-icon" aria-hidden>
-          {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </span>
       </div>
-      {open && <div style={{ marginTop: 10 }}>{children}</div>}
+
+      <div className="card">
+        <div className="upload-section-label">{t.uploadScalpImage}</div>
+        <div className="upload-hint">{t.uploadHint}</div>
+
+        {!preview ? (
+          <div
+            className="dropzone"
+            role="button"
+            tabIndex={0}
+            onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("drag"); }}
+            onDragLeave={(e) => { e.currentTarget.classList.remove("drag"); }}
+            onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove("drag"); pick(e.dataTransfer?.files?.[0]); }}
+            onClick={() => fileRef.current?.click()}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }}
+          >
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*,.bmp,image/bmp,video/*,.mp4,.webm,.mov,.wmv,.avi"
+              onChange={(e) => { pick(e.target?.files?.[0]); e.target.value = ""; }}
+              aria-hidden
+            />
+            <div className="dropzone-icon">📸</div>
+            <div className="dropzone-text">{t.dropHere}</div>
+            <div className="dropzone-sub">{t.orClick}</div>
+          </div>
+        ) : (
+          <div>
+            {file?.type?.startsWith("video/") ? (
+              <video src={preview} controls className="preview-video" />
+            ) : (
+              <img src={preview} alt={t.scanPreviewAlt} className="preview-img" />
+            )}
+          </div>
+        )}
+
+        {preview && !loading && (
+          <>
+            {!canScan && (
+              <p className="caption" style={{ marginTop: 14, textAlign: "center" }}>{t.fillNameGender}</p>
+            )}
+            <div className="action-row">
+              <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={handleCancel}>
+                {t.cancel}
+              </button>
+              <button
+                type="button"
+                className="btn btn-solid"
+                style={{ flex: 1, opacity: canScan ? 1 : 0.5 }}
+                onClick={handleScan}
+              >
+                {t.scan}
+              </button>
+            </div>
+          </>
+        )}
+
+        {loading && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span className="spinner" style={{ width: 18, height: 18 }} />
+              <span className="caption">{t.analysing}</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        )}
+
+        {error && <div className="error-box">⚠️ {error}</div>}
+      </div>
     </div>
   );
 }
@@ -632,7 +740,7 @@ function CollapsibleSection({ title, children, defaultOpen = true }) {
 // CUSTOMER REPORT (RESULTS)
 // ══════════════════════════════════════════════════════════════════════════════
 
-function CustomerReportSection({ scan, onUpdateScan, onNewScan, lang, t }) {
+function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
   const [feedbackAccurate, setFeedbackAccurate] = useState(scan.accuracy ?? null);
   const [notes, setNotes] = useState(scan.note ?? "");
   const [feedbackSent, setFeedbackSent] = useState(scan.feedbackSent ?? false);
@@ -651,14 +759,7 @@ function CustomerReportSection({ scan, onUpdateScan, onNewScan, lang, t }) {
   const { report: r, preview, customer, reportId, date } = scan;
   const conditions = r?.conditions || [];
   const primaryLabel = r?.primaryCondition || "";
-
-  // Build condition pill list: primary first, then others
-  const detectedConds = DIAG_CONDITIONS.filter((c) =>
-    conditions.some((rc) => rc.toLowerCase().includes(c.id) || rc.toLowerCase() === c.label.toLowerCase())
-  );
-
-  const urgencyClass = { routine: "urgency-routine", monitor: "urgency-monitor", consult: "urgency-consult" }[r?.urgency] ?? "urgency-routine";
-  const urgencyText = { routine: t.urgencyRoutine, monitor: t.urgencyMonitor, consult: t.urgencyConsult }[r?.urgency] ?? r?.urgency;
+  const overallScore = r?.overallScore;
 
   const handleSend = () => {
     onUpdateScan({ accuracy: feedbackAccurate, note: notes, feedbackSent: true });
@@ -669,47 +770,32 @@ function CustomerReportSection({ scan, onUpdateScan, onNewScan, lang, t }) {
   const diagnosisPoints = (r?.findings || []).slice(0, 3);
   const summaryText = r?.patientSummary || r?.summary || "—";
 
+  const m = r?.metrics || {};
+  const metricRows = [
+    { key: "overallScore", label: t.metricConditionBurden, raw: overallScore },
+    { key: "density", label: t.metricDensity, raw: m.density },
+    { key: "sebumLevel", label: t.metricSebum, raw: m.sebumLevel },
+    { key: "hydration", label: t.metricHydration, raw: m.hydration },
+    { key: "inflammation", label: t.metricInflammation, raw: m.inflammation },
+    { key: "follicleHealth", label: t.metricFollicle, raw: m.follicleHealth },
+    { key: "scalpType", label: t.metricScalpType, raw: m.scalpType },
+  ];
+
   return (
     <div>
-      {/* ── Patient Info ── */}
+      {/* ── Patient header + primary condition (no urgency / summary under name) ── */}
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="patient-info-row">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span className="patient-name">{customer?.name || "—"}</span>
-            {reportId && <span className="patient-id">| {reportId}</span>}
-          </div>
-          <span className="patient-date">{t.dateLabel} | {formatDate(date, lang)}</span>
-        </div>
-        {r?.urgency && (
-          <div style={{ marginTop: 10 }}>
-            <span className={`urgency-badge ${urgencyClass}`}>
-              <Activity size={10} /> {urgencyText}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span className="patient-name">{customer?.name || "—"}</span>
+              {reportId && <span className="patient-id">| {reportId}</span>}
+            </div>
+            <span style={primaryConditionBadgeStyle(overallScore)}>
+              {primaryConditionDisplayLabel(primaryLabel, lang)}
             </span>
-            {r?.urgencyReason && (
-              <div className="caption" style={{ marginTop: 5, lineHeight: 1.45 }}>{r.urgencyReason}</div>
-            )}
           </div>
-        )}
-      </div>
-
-      {/* ── Primary Condition pills ── */}
-      <div style={{ marginBottom: 14 }}>
-        <div className="section-title-label">{t.primaryConditionLabel}</div>
-        <div className="condition-pills">
-          {detectedConds.length > 0 ? detectedConds.map((cond) => {
-            const isPrimary = primaryLabel.toLowerCase().includes(cond.id);
-            const label = lang === "zh" ? cond.labelZh : cond.label;
-            return (
-              <span
-                key={cond.id}
-                className={`cond-pill ${isPrimary ? "cond-pill-primary" : "cond-pill-detected"}`}
-              >
-                {label}
-              </span>
-            );
-          }) : (
-            <span className="caption">—</span>
-          )}
+          <span className="patient-date" style={{ alignSelf: "flex-start" }}>{t.dateLabel} | {formatDate(date, lang)}</span>
         </div>
       </div>
 
@@ -746,28 +832,39 @@ function CustomerReportSection({ scan, onUpdateScan, onNewScan, lang, t }) {
         </div>
       </div>
 
-      {/* ── Scalp Metrics (collapsible) ── */}
-      {r?.metrics && (
-        <div className="card" style={{ marginBottom: 14 }}>
-          <CollapsibleSection title={t.scalpMetrics} defaultOpen={false}>
-            <div className="metrics-grid">
-              {[
-                [t.metricDensity, r.metrics.density],
-                [t.metricSebum, r.metrics.sebumLevel],
-                [t.metricHydration, r.metrics.hydration],
-                [t.metricInflammation, r.metrics.inflammation],
-                [t.metricFollicle, r.metrics.follicleHealth],
-                [t.metricScalpType, r.metrics.scalpType],
-              ].map(([label, value]) => (
-                <div key={label} className="metric-cell">
-                  <div className="metric-cell-label">{label}</div>
-                  <div className="metric-cell-value">{translateMetricValue(value, lang, t)}</div>
-                </div>
-              ))}
-            </div>
-          </CollapsibleSection>
+      {/* ── Scalp Metrics — all rows, colors from numeric severity index ── */}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="section-title-label" style={{ marginBottom: 4 }}>{t.scalpMetrics}</div>
+        <p className="caption" style={{ marginBottom: 10 }}>{t.metricScoreHint}</p>
+        <div className="metrics-grid">
+          {metricRows.map((row) => {
+            const sev = metricSeverity0to100(row.raw, row.key);
+            const band = metricBandStyle(sev);
+            const display =
+              row.key === "overallScore"
+                ? (Number.isFinite(Number(row.raw)) ? `${Math.round(Number(row.raw))}/100` : "—")
+                : translateMetricValue(row.raw, lang, t);
+            return (
+              <div
+                key={row.key}
+                className="metric-cell"
+                style={{
+                  borderColor: band.borderColor,
+                  background: band.background,
+                }}
+              >
+                <div className="metric-cell-label">{row.label}</div>
+                {row.key !== "overallScore" && (
+                  <div className="metric-cell-num" style={{ color: band.color }}>
+                    {t.metricSeverityIndex}: {Math.round(sev)}
+                  </div>
+                )}
+                <div className="metric-cell-value" style={{ color: band.color }}>{display}</div>
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
 
       {/* ── Feedback ── */}
       <div className="card" style={{ marginBottom: 14 }}>
@@ -945,6 +1042,7 @@ export default function App() {
             onComplete={handleAnalysisComplete}
             lang={lang}
             t={t}
+            theme={theme}
             customerType={customerType}
             onCustomerTypeChange={setCustomerType}
           />
@@ -952,7 +1050,6 @@ export default function App() {
           <CustomerReportSection
             scan={scan}
             onUpdateScan={updateScan}
-            onNewScan={handleNewScan}
             lang={lang}
             t={t}
           />
