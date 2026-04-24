@@ -28,7 +28,8 @@ const T = {
     nameRequired: "Name is required",
     genderRequired: "Gender is required",
     fillNameGender: "Enter customer name and gender to scan.",
-    genderPlaceholder: "Gender",
+    genderFieldLabel: "Gender",
+    genderEmptyOption: "Select…",
     genderMale: "Male",
     genderFemale: "Female",
     genderOther: "Other",
@@ -90,7 +91,8 @@ const T = {
     nameRequired: "请输入姓名",
     genderRequired: "请选择性别",
     fillNameGender: "请填写客户姓名和性别后再扫描。",
-    genderPlaceholder: "性别",
+    genderFieldLabel: "性别",
+    genderEmptyOption: "请选择…",
     genderMale: "男",
     genderFemale: "女",
     genderOther: "其他",
@@ -218,7 +220,11 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .input-surface .dob-wrap .form-input{padding-right:40px}
 .form-label-dob{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px;letter-spacing:.01em;line-height:1.2}
 [data-theme="light"] .form-label-dob{color:#2D5A45}
-.form-col-spacer{height:24px;margin-bottom:0;flex-shrink:0}
+.input-surface--stack{display:flex;flex-direction:column}
+.dob-value-row{display:flex;align-items:center;gap:8px;min-height:44px;margin-top:2px}
+.dob-wrap{flex:1;min-width:0}
+[data-theme="light"] .dob-wrap .form-input{font-size:15px;font-weight:500;color:#2D5A45;letter-spacing:.02em}
+[data-theme="light"] .dob-wrap .form-input::-webkit-datetime-edit{ padding: 2px 0 }
 
 /* ── Buttons ── */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 22px;border-radius:10px;border:none;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -240,7 +246,8 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .tab-btn{flex:1;padding:10px 0;border:none;border-radius:9px;background:transparent;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:color .15s,background .15s;color:var(--text2)}
 [data-theme="light"] .tab-btn{color:#1B4332}
 .tab-btn.active{background:var(--gold);color:#F3F7F5;box-shadow:0 1px 4px rgba(27,67,50,.2)}
-[data-theme="light"] .tab-btn.active{background:#1B4332;color:#FFFFFF;box-shadow:0 2px 8px rgba(27,67,50,.18)}
+[data-theme="dark"] .tab-btn.active{background:#2A3F35;color:#E8F0EC;box-shadow:inset 0 1px 0 rgba(255,255,255,.06);border:1px solid rgba(214,232,222,.12)}
+[data-theme="light"] .tab-btn.active{background:#D8DEDB;color:#1B4332;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);border:1px solid #C9D0CC}
 .tab-btn:not(.active):hover{background:rgba(255,255,255,.35)}
 [data-theme="light"] .tab-btn:not(.active):hover{background:rgba(255,255,255,.5)}
 
@@ -267,7 +274,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .dob-wrap{position:relative}
 .dob-wrap .form-input{padding-right:40px}
 .dob-wrap .dob-cal-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--gold);pointer-events:none;display:flex}
-[data-theme="light"] .dob-wrap .dob-cal-icon{color:#1B4332}
+[data-theme="light"] .dob-wrap .dob-cal-icon{color:#5C6F66;opacity:.88}
 
 /* ── Upload section ── */
 .upload-section-label{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:.02em}
@@ -674,36 +681,38 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
       </div>
 
       <div className="form-row form-row--equal">
-        <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-          <div className="form-col-spacer" aria-hidden />
-          <div className={`input-surface has-asterisk${genderError ? " surface-error" : ""}`}>
-            <span className="field-asterisk" aria-hidden="true">*</span>
-            <select
-              className={`form-select${genderError ? " error" : ""}`}
-              value={gender}
-              onChange={(e) => { setGender(e.target.value); setGenderError(false); }}
-              aria-required
-            >
-              <option value="">{t.genderPlaceholder}</option>
-              <option value="male">{t.genderMale}</option>
-              <option value="female">{t.genderFemale}</option>
-              <option value="other">{t.genderOther}</option>
-            </select>
-            {genderError && <div className="form-error">{t.genderRequired}</div>}
+        <div className={`input-surface input-surface--stack${genderError ? " surface-error" : ""}`} style={{ minWidth: 0 }}>
+          <div className="form-label-dob" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span>{t.genderFieldLabel}</span>
+            <span className="form-required" aria-hidden="true">*</span>
           </div>
+          <select
+            className={`form-select${genderError ? " error" : ""}`}
+            value={gender}
+            onChange={(e) => { setGender(e.target.value); setGenderError(false); }}
+            aria-required
+          >
+            <option value="">{t.genderEmptyOption}</option>
+            <option value="male">{t.genderMale}</option>
+            <option value="female">{t.genderFemale}</option>
+            <option value="other">{t.genderOther}</option>
+          </select>
+          {genderError && <div className="form-error">{t.genderRequired}</div>}
         </div>
-        <div className="input-surface" style={{ minWidth: 0 }}>
+        <div className="input-surface input-surface--stack input-surface--dob" style={{ minWidth: 0 }}>
           <div className="form-label-dob">{t.dobLabel}</div>
-          <div className="dob-wrap">
-            <input
-              className="form-input"
-              type="date"
-              value={dob}
-              onChange={(e) => setDob(e.target.value)}
-              aria-label={t.dobLabel}
-              style={{ colorScheme: theme === "light" ? "light" : "dark" }}
-            />
-            <span className="dob-cal-icon" aria-hidden><Calendar size={18} strokeWidth={2} /></span>
+          <div className="dob-value-row">
+            <div className="dob-wrap">
+              <input
+                className="form-input"
+                type="date"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+                aria-label={t.dobLabel}
+                style={{ colorScheme: theme === "light" ? "light" : "dark" }}
+              />
+              <span className="dob-cal-icon" aria-hidden><Calendar size={18} strokeWidth={2} /></span>
+            </div>
           </div>
         </div>
       </div>
