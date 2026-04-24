@@ -32,6 +32,7 @@ const T = {
     genderFemale: "Female",
     genderOther: "Other",
     dobPlaceholder: "Date of Birth",
+    dobLabel: "Date of Birth",
     uploadScalpImage: "Upload scalp image",
     uploadHint: "Image: JPG, PNG, BMP, HEIC · Video: MP4, WebM, MOV, WMV, AVI · up to 20 MB",
     dropHere: "Drop your scalp photo here",
@@ -92,6 +93,7 @@ const T = {
     genderFemale: "女",
     genderOther: "其他",
     dobPlaceholder: "出生日期",
+    dobLabel: "出生日期",
     uploadScalpImage: "上传头皮图像",
     uploadHint: "图片：JPG、PNG、BMP、HEIC · 视频：MP4、WebM、MOV、WMV、AVI · 最大 20 MB",
     dropHere: "将头皮照片拖放到此处",
@@ -648,16 +650,19 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
           </select>
           {genderError && <div className="form-error">{t.genderRequired}</div>}
         </div>
-        <div className="dob-wrap">
-          <input
-            className="form-input"
-            type="date"
-            value={dob}
-            onChange={(e) => setDob(e.target.value)}
-            aria-label={t.dobPlaceholder}
-            style={{ colorScheme: theme === "light" ? "light" : "dark" }}
-          />
-          <span className="dob-cal-icon" aria-hidden><Calendar size={18} strokeWidth={2} /></span>
+        <div>
+          <div className="form-label" style={{ marginBottom: 6 }}>{t.dobLabel}</div>
+          <div className="dob-wrap">
+            <input
+              className="form-input"
+              type="date"
+              value={dob}
+              onChange={(e) => setDob(e.target.value)}
+              aria-label={t.dobLabel}
+              style={{ colorScheme: theme === "light" ? "light" : "dark" }}
+            />
+            <span className="dob-cal-icon" aria-hidden><Calendar size={18} strokeWidth={2} /></span>
+          </div>
         </div>
       </div>
 
