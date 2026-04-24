@@ -246,7 +246,11 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 
 /* ── Form fields ── */
 .form-group{margin-bottom:0}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0;align-items:start}
+.form-row--equal{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.form-row--equal > *{min-width:0;width:100%}
+.form-row--equal .input-surface{width:100%;box-sizing:border-box}
+.form-row--equal .dob-wrap,.form-row--equal .dob-wrap .form-input{width:100%;min-width:0;box-sizing:border-box}
 .field-asterisk{position:absolute;left:10px;top:10px;z-index:1;color:var(--crit);font-size:14px;font-weight:700;line-height:1;pointer-events:none}
 .input-surface .form-error{margin-top:8px}
 .form-input,.form-select{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--bg1);font-family:'Outfit',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border .15s,box-shadow .15s;appearance:none;-webkit-appearance:none}
@@ -306,11 +310,11 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .patient-date{font-size:12px;color:var(--text3)}
 .primary-inline{margin-top:10px;font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:700;padding:8px 14px;border-radius:10px;display:inline-block;border:1px solid transparent}
 
-/* ── Condition pills ── */
-.condition-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-.cond-pill{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.2px;cursor:default}
-.cond-pill-primary{background:var(--gold);color:#F3F7F5}
-.cond-pill-detected{background:var(--sage-lt);color:var(--sage);border:1px solid var(--sage)}
+/* ── Condition pills (report — reference palette) ── */
+.condition-pills{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+.cond-pill-report{display:inline-flex;align-items:center;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;font-family:'Outfit',sans-serif;letter-spacing:.02em;border:none}
+.card-primary-focus{border:1px solid rgba(59,130,246,.42)}
+[data-theme="dark"] .card-primary-focus{border-color:rgba(129,180,255,.38)}
 
 /* ── Diagnosis section ── */
 .diagnosis-layout{display:flex;gap:14px;align-items:flex-start;margin-top:10px}
@@ -339,13 +343,19 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .report-ref{font-size:12px;color:var(--text3);margin-bottom:14px}
 .feedback-q{font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px}
 .feedback-btns{display:flex;gap:10px;margin-bottom:18px}
-.feedback-btn{flex:1;padding:10px 0;border-radius:9px;border:1px solid var(--border2);background:var(--bg1);font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s}
-.feedback-btn:hover{border-color:var(--gold);color:var(--gold)}
-.feedback-btn.yes-active{border-color:var(--sage);background:var(--sage-lt);color:var(--sage)}
-.feedback-btn.no-active{border-color:var(--crit);background:var(--crit-lt);color:var(--crit)}
+.feedback-btn{flex:1;padding:10px 0;border-radius:9px;border:1px solid rgba(27,67,50,.2);background:var(--bg1);font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s}
+[data-theme="dark"] .feedback-btn{border-color:rgba(214,232,222,.2)}
+[data-theme="light"] .feedback-btn{background:#FFFFFF}
+.feedback-btn:hover{border-color:rgba(27,67,50,.45);color:var(--gold)}
+[data-theme="dark"] .feedback-btn:hover{border-color:rgba(214,232,222,.45)}
+.feedback-btn.yes-active{border-color:rgba(47,110,68,.45);background:var(--sage-lt);color:var(--sage)}
+.feedback-btn.no-active{border-color:rgba(176,64,64,.45);background:var(--crit-lt);color:var(--crit)}
 .notes-label{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px}
-.notes-textarea{width:100%;min-height:76px;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);font-family:'Outfit',sans-serif;font-size:13px;color:var(--text);resize:vertical;outline:none;transition:border .15s}
-.notes-textarea:focus{border-color:var(--gold)}
+.notes-textarea{width:100%;min-height:76px;padding:11px 14px;border-radius:10px;border:1px solid rgba(27,67,50,.22);background:var(--bg2);font-family:'Outfit',sans-serif;font-size:13px;color:var(--text);resize:vertical;outline:none;transition:border .15s,box-shadow .15s}
+[data-theme="light"] .notes-textarea{background:#FFFFFF;border:1px solid rgba(27,67,50,.18)}
+[data-theme="dark"] .notes-textarea{border:1px solid rgba(214,232,222,.18);background:var(--bg1)}
+.notes-textarea:focus{border-color:rgba(27,67,50,.38);box-shadow:0 0 0 2px rgba(27,67,50,.06)}
+[data-theme="dark"] .notes-textarea:focus{border-color:rgba(214,232,222,.32);box-shadow:0 0 0 2px rgba(214,232,222,.06)}
 .notes-textarea::placeholder{color:var(--text3)}
 
 /* ── Section toggle ── */
@@ -370,6 +380,20 @@ const DIAG_CONDITIONS = [
   { id: "inflammation", label: "Inflammation Scalp",  labelZh: "炎症头皮", icon: "🔴" },
   { id: "dandruff",     label: "Dandruff Scalp",      labelZh: "头屑头皮", icon: "❄️" },
 ];
+
+/** Report tag colors — matches patient-facing mock (sensitive = blush, oily = grey + black text). */
+const CONDITION_REPORT_STYLE = {
+  sensitive: { backgroundColor: "#FCEEEA", color: "#C75D5D" },
+  oily: { backgroundColor: "#E8EAEB", color: "#141414" },
+  dry: { backgroundColor: "#E8F4FC", color: "#1565C0" },
+  acne: { backgroundColor: "#F3E5F5", color: "#6A1B9A" },
+  inflammation: { backgroundColor: "#FFEBEE", color: "#B71C1C" },
+  dandruff: { backgroundColor: "#ECEFF1", color: "#37474F" },
+};
+
+function conditionReportPillStyle(condId) {
+  return CONDITION_REPORT_STYLE[condId] || { backgroundColor: "var(--bg2)", color: "var(--text)" };
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // UTILITIES
@@ -462,31 +486,6 @@ function metricBandStyle(score0to100) {
     return { borderColor: "var(--amber)", background: "var(--amber-lt)", color: "var(--amber)" };
   }
   return { borderColor: "var(--crit)", background: "var(--crit-lt)", color: "var(--crit)" };
-}
-
-function primaryConditionBadgeStyle(overallScore) {
-  const n = Number(overallScore);
-  const s = Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 48;
-  const band = metricBandStyle(s);
-  return {
-    ...band,
-    display: "inline-block",
-    marginTop: 10,
-    padding: "8px 14px",
-    borderRadius: 10,
-    fontWeight: 700,
-    fontFamily: "'Cormorant Garamond', serif",
-    fontSize: 16,
-    borderWidth: 1,
-    borderStyle: "solid",
-  };
-}
-
-function primaryConditionDisplayLabel(primaryLabel, lang) {
-  const p = (primaryLabel || "").trim().toLowerCase();
-  const hit = DIAG_CONDITIONS.find((c) => p.includes(c.id) || p === c.label.toLowerCase());
-  if (hit) return lang === "zh" ? hit.labelZh : hit.label;
-  return primaryLabel?.trim() || "—";
 }
 
 function formatDate(iso, lang) {
@@ -674,7 +673,7 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
         {nameError && <div className="form-error">{t.nameRequired}</div>}
       </div>
 
-      <div className="form-row">
+      <div className="form-row form-row--equal">
         <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
           <div className="form-col-spacer" aria-hidden />
           <div className={`input-surface has-asterisk${genderError ? " surface-error" : ""}`}>
@@ -840,7 +839,18 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
   const { report: r, preview, customer, reportId, date } = scan;
   const conditions = r?.conditions || [];
   const primaryLabel = r?.primaryCondition || "";
-  const overallScore = r?.overallScore;
+  const primaryLc = primaryLabel.toLowerCase();
+
+  const detectedConditionTags = DIAG_CONDITIONS.filter((c) =>
+    conditions.some((rc) => {
+      const x = rc.toLowerCase();
+      return x.includes(c.id) || x === c.label.toLowerCase();
+    })
+  ).sort((a, b) => {
+    const pa = primaryLc.includes(a.id) ? 0 : 1;
+    const pb = primaryLc.includes(b.id) ? 0 : 1;
+    return pa - pb || a.id.localeCompare(b.id);
+  });
 
   const handleSend = () => {
     onUpdateScan({ accuracy: feedbackAccurate, note: notes, feedbackSent: true });
@@ -853,7 +863,6 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
 
   const m = r?.metrics || {};
   const metricRows = [
-    { key: "overallScore", label: t.metricConditionBurden, raw: overallScore },
     { key: "density", label: t.metricDensity, raw: m.density },
     { key: "sebumLevel", label: t.metricSebum, raw: m.sebumLevel },
     { key: "hydration", label: t.metricHydration, raw: m.hydration },
@@ -864,19 +873,31 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
 
   return (
     <div>
-      {/* ── Patient header + primary condition (no urgency / summary under name) ── */}
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="patient-info-row">
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span className="patient-name">{customer?.name || "—"}</span>
-              {reportId && <span className="patient-id">| {reportId}</span>}
-            </div>
-            <span style={primaryConditionBadgeStyle(overallScore)}>
-              {primaryConditionDisplayLabel(primaryLabel, lang)}
-            </span>
+      {/* ── Patient row (outside card) + Primary condition card (mock palette) ── */}
+      <div style={{ marginBottom: 14 }}>
+        <div className="patient-info-row" style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flex: 1, minWidth: 0 }}>
+            <span className="patient-name">{customer?.name || "—"}</span>
+            {reportId && <span className="patient-id">| {reportId}</span>}
           </div>
-          <span className="patient-date" style={{ alignSelf: "flex-start" }}>{t.dateLabel} | {formatDate(date, lang)}</span>
+          <span className="patient-date" style={{ flexShrink: 0 }}>{t.dateLabel} | {formatDate(date, lang)}</span>
+        </div>
+        <div className="card card-primary-focus">
+          <div className="section-title-label" style={{ marginBottom: 10 }}>{t.primaryConditionLabel}</div>
+          <div className="condition-pills">
+            {detectedConditionTags.length > 0 ? (
+              detectedConditionTags.map((cond) => {
+                const label = lang === "zh" ? cond.labelZh : cond.label;
+                return (
+                  <span key={cond.id} className="cond-pill-report" style={conditionReportPillStyle(cond.id)}>
+                    {label}
+                  </span>
+                );
+              })
+            ) : (
+              <span className="caption">—</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -921,15 +942,11 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
           defaultOpen={false}
           ariaLabel={`${t.toggleSectionAria}: ${t.scalpMetrics}`}
         >
-          <p className="caption" style={{ marginBottom: 10 }}>{t.metricScoreHint}</p>
           <div className="metrics-grid">
             {metricRows.map((row) => {
               const sev = metricSeverity0to100(row.raw, row.key);
               const band = metricBandStyle(sev);
-              const display =
-                row.key === "overallScore"
-                  ? (Number.isFinite(Number(row.raw)) ? `${Math.round(Number(row.raw))}/100` : "—")
-                  : translateMetricValue(row.raw, lang, t);
+              const display = translateMetricValue(row.raw, lang, t);
               return (
                 <div
                   key={row.key}
@@ -940,11 +957,9 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
                   }}
                 >
                   <div className="metric-cell-label">{row.label}</div>
-                  {row.key !== "overallScore" && (
-                    <div className="metric-cell-num" style={{ color: band.color }}>
-                      {t.metricSeverityIndex}: {Math.round(sev)}
-                    </div>
-                  )}
+                  <div className="metric-cell-num" style={{ color: band.color }}>
+                    {t.metricSeverityIndex}: {Math.round(sev)}
+                  </div>
                   <div className="metric-cell-value" style={{ color: band.color }}>{display}</div>
                 </div>
               );
