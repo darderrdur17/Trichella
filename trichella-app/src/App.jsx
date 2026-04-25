@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { CheckCircle, ArrowLeft, Calendar, ChevronDown, ChevronUp, Search, Pencil, User, SlidersHorizontal } from "lucide-react";
+import { CheckCircle, ArrowLeft, Calendar, ChevronDown, ChevronUp, Search, Pencil, User, SlidersHorizontal, Trash2 } from "lucide-react";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // STORAGE KEYS
@@ -99,6 +99,18 @@ const T = {
     allReportsFilterAll: "All reports",
     allReportsFilterRecent: "Recent",
     allReportsFilterDate: "By date",
+    delete: "Delete",
+    deleteThisReport: "Delete this report",
+    deleteThisCustomer: "Delete this customer",
+    confirmDeleteReport: "Remove this report from this device?",
+    confirmDeleteCustomer: "Remove this customer and all of their saved reports from this device?",
+    deleteAllReports: "Delete all past reports for this customer",
+    confirmDeleteAllReports: "Remove all past reports for this customer from this device? The customer will stay in your list.",
+    cancelSelection: "Cancel",
+    deleteSelected: "Delete selected",
+    confirmDeleteNReports: "Delete {n} selected report(s) from this device?",
+    confirmDeleteNCustomers: "Delete {n} selected customer(s) and all their reports from this device?",
+    deleteHint: "Select items to delete",
   },
   zh: {
     pageTitle: "头皮检测",
@@ -179,6 +191,18 @@ const T = {
     allReportsFilterAll: "全部报告",
     allReportsFilterRecent: "最近",
     allReportsFilterDate: "按日期",
+    delete: "删除",
+    deleteThisReport: "删除此报告",
+    deleteThisCustomer: "删除此客户",
+    confirmDeleteReport: "从本机删除此条报告？",
+    confirmDeleteCustomer: "从本机删除此客户及其所有已存报告？",
+    deleteAllReports: "删除该客户全部历史报告",
+    confirmDeleteAllReports: "从本机删除此客户的所有历史报告？客户仍会保留在列表中。",
+    cancelSelection: "取消",
+    deleteSelected: "删除所选",
+    confirmDeleteNReports: "从本机删除所选的 {n} 条报告？",
+    confirmDeleteNCustomers: "从本机删除所选的 {n} 位客户及其全部报告？",
+    deleteHint: "请选择要删除的项",
   },
 };
 
@@ -228,6 +252,7 @@ body{background:var(--bg);color:var(--text)}
 .app{min-height:100vh;padding:20px 18px 32px;max-width:520px;margin:0 auto}
 [data-theme="light"] .app{background:transparent}
 .form-page{display:flex;flex-direction:column;gap:12px}
+.form-page--below-tabs{margin-top:20px}
 .app-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px}
 .app-header-left{display:flex;align-items:center;gap:10px}
 
@@ -295,8 +320,16 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 [data-theme="light"] .tab-btn:not(.active):hover{background:rgba(255,255,255,.4);color:#4A5E56}
 
 /* ── Regular customer list + profile ── */
-.regular-back-btn{display:inline-flex;align-items:center;gap:8px;border:none;background:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;color:#1B4332;padding:4px 0 12px;margin:0 0 4px}
+.regular-back-btn{display:inline-flex;align-items:center;gap:8px;border:none;background:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;color:#1B4332;padding:4px 0 12px;margin:8px 0 4px}
 .regular-back-btn:hover{color:#132A22}
+.regular-list-row-wrap{display:flex;gap:8px;align-items:stretch;margin-bottom:8px}
+.regular-list-row-wrap .regular-list-row{margin-bottom:0;flex:1;min-width:0}
+.regular-list-del{flex-shrink:0;width:44px;min-height:48px;border-radius:10px;border:1px solid #D5DED9;background:#FFFFFF;color:#6B8075;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;box-shadow:0 1px 2px rgba(16,42,30,.04)}
+.regular-list-del:hover{border-color:var(--crit);color:var(--crit);background:var(--crit-lt)}
+.list-section-hd-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.list-section-hd-actions .regular-list-del{width:36px;min-height:36px}
+.reports-hd-del{color:#6B8075}
+.reports-hd-del:hover{border-color:var(--crit);color:var(--crit);background:var(--crit-lt)}
 .regular-list-search{position:relative;margin-bottom:12px}
 .regular-list-search .search-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#6B8075;pointer-events:none}
 .regular-list-search input{width:100%;padding:12px 14px 12px 40px;border-radius:10px;border:1px solid #D5DED9;background:#FFFFFF;font-size:14px;color:#1B4332;outline:none;box-shadow:0 1px 3px rgba(16,42,30,.04)}
@@ -318,6 +351,14 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .past-reports-h .list-section-d{margin-left:6px}
 .past-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .list-filter-wrap{position:relative;flex-shrink:0}
+.list-hd-action-btn{width:32px;height:32px;border-radius:8px;border:1px solid #D0D8D4;background:#FFFFFF;color:#1B4332;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0}
+.list-hd-action-btn:hover{border-color:#1B4332;background:rgba(27,67,50,.04)}
+.list-hd-action-btn.is-active{border-color:var(--crit);color:var(--crit);background:var(--crit-lt)}
+.list-select-bar{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin:10px 0 14px;flex-wrap:wrap}
+.list-select-hint{font-size:12px;color:var(--text3);width:100%;margin-bottom:2px}
+.list-sel-check{width:20px;height:20px;accent-color:#1B4332;flex-shrink:0;cursor:pointer;margin:0;align-self:center}
+.regular-list-row--select{justify-content:flex-start;gap:10px;cursor:default}
+.regular-list-row--select:not(.is-disabled):hover{background:rgba(27,67,50,.04)}
 .list-filter-btn{width:32px;height:32px;border-radius:8px;border:1px solid #D0D8D4;background:#FFFFFF;color:#1B4332;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
 .list-filter-btn:hover{border-color:#1B4332;background:rgba(27,67,50,.04)}
 .list-filter-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:200px;z-index:20;background:#FFF;border:1px solid #D5DED9;border-radius:12px;box-shadow:0 8px 24px rgba(16,42,30,.1);padding:6px;animation:dropdownIn .15s ease}
@@ -540,6 +581,42 @@ function patchHistoryScanFields(scanId, fields) {
   if (i < 0) return;
   hist[i] = { ...hist[i], ...fields };
   writeHistory(hist);
+}
+
+function removeHistoryEntryById(scanId) {
+  if (!scanId) return;
+  writeHistory(readHistory().filter((h) => h.id !== scanId));
+}
+
+function removeHistoryEntriesByIds(scanIds) {
+  if (!scanIds?.length) return;
+  const set = new Set(scanIds);
+  writeHistory(readHistory().filter((h) => !set.has(h.id)));
+}
+
+function removeCustomersByRosterIds(rosterIds) {
+  if (!rosterIds?.length) return;
+  const set = new Set(rosterIds);
+  const hist = readHistory().filter((h) => {
+    if (!h?.customer) return true;
+    const rid = h.customer.rosterId || customerRosterIdFromName(h.customer.name);
+    return !set.has(rid);
+  });
+  writeHistory(hist);
+  writeRoster(readRoster().filter((c) => !set.has(c.id)));
+}
+
+/** Remove all history for this customer; roster entry is kept (still listed under Regular). */
+function removeAllHistoryForCustomerProfile(rosterId, displayName) {
+  if (!rosterId) return;
+  const hist = readHistory().filter((h) => {
+    if (!h?.customer) return true;
+    if (sameCustomerRoster(h.customer, rosterId)) return false;
+    if (displayName && h.customer.name?.trim().toLowerCase() === String(displayName).trim().toLowerCase()) return false;
+    return true;
+  });
+  writeHistory(hist);
+  syncRosterWithHistory();
 }
 
 function readRoster() {
@@ -1063,10 +1140,13 @@ function genderToLabel(t, g) {
   return g || "—";
 }
 
-function RegularCustomerList({ t, lang, onSelect, rosterVersion }) {
+function RegularCustomerList({ t, lang, onSelect, rosterVersion, onBatchDeleteHistory, onBatchDeleteCustomers }) {
   const [q, setQ] = useState("");
   const [recentFilter, setRecentFilter] = useState("all");
   const [customerFilter, setCustomerFilter] = useState("all");
+  const [deleteMode, setDeleteMode] = useState(null);
+  const [selRecent, setSelRecent] = useState([]);
+  const [selCustomers, setSelCustomers] = useState([]);
   const roster = useMemo(() => {
     syncRosterWithHistory();
     return readRoster();
@@ -1105,8 +1185,57 @@ function RegularCustomerList({ t, lang, onSelect, rosterVersion }) {
     }
     return rows.slice(0, 12);
   }, [hist, recentFilter, rosterVersion]);
+
+  useEffect(() => {
+    setSelRecent((prev) => prev.filter((id) => recentRows.some((h) => h.id === id)));
+  }, [recentFilter, recentRows, rosterVersion]);
+  useEffect(() => {
+    setSelCustomers((prev) => prev.filter((id) => customerRows.some((c) => c.id === id)));
+  }, [customerFilter, customerRows, rosterVersion]);
+
+  const toggleRecentSel = (id) => {
+    setSelRecent((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  };
+  const toggleCustomerSel = (id) => {
+    setSelCustomers((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  };
+
+  const startRecentDeleteMode = () => {
+    if (deleteMode === "recent") {
+      setDeleteMode(null);
+      setSelRecent([]);
+    } else {
+      setDeleteMode("recent");
+      setSelCustomers([]);
+    }
+  };
+  const startCustomerDeleteMode = () => {
+    if (deleteMode === "customers") {
+      setDeleteMode(null);
+      setSelCustomers([]);
+    } else {
+      setDeleteMode("customers");
+      setSelRecent([]);
+    }
+  };
+
+  const runDeleteRecent = () => {
+    if (!selRecent.length) return;
+    if (!window.confirm(t.confirmDeleteNReports.replace("{n}", String(selRecent.length)))) return;
+    onBatchDeleteHistory(selRecent);
+    setDeleteMode(null);
+    setSelRecent([]);
+  };
+  const runDeleteCustomers = () => {
+    if (!selCustomers.length) return;
+    if (!window.confirm(t.confirmDeleteNCustomers.replace("{n}", String(selCustomers.length)))) return;
+    onBatchDeleteCustomers(selCustomers);
+    setDeleteMode(null);
+    setSelCustomers([]);
+  };
+
   return (
-    <div className="form-page">
+    <div className="form-page form-page--below-tabs">
       <div className="regular-list-search">
         <span className="search-ic" aria-hidden><Search size={16} strokeWidth={2.2} /></span>
         <input
@@ -1122,58 +1251,142 @@ function RegularCustomerList({ t, lang, onSelect, rosterVersion }) {
           <span className="list-section-t">{t.recentScanned}</span>
           <span className="list-section-d"> | {todayStr}</span>
         </span>
-        <ListFilterMenu t={t} value={recentFilter} onChange={setRecentFilter} mode="default" />
+        <div className="list-section-hd-actions">
+          <button
+            type="button"
+            className={`list-hd-action-btn${deleteMode === "recent" ? " is-active" : ""}`}
+            onClick={startRecentDeleteMode}
+            title={deleteMode === "recent" ? t.cancelSelection : t.delete}
+            aria-label={deleteMode === "recent" ? t.cancelSelection : t.delete}
+            aria-pressed={deleteMode === "recent"}
+          >
+            <Trash2 size={16} strokeWidth={2} />
+          </button>
+          <ListFilterMenu t={t} value={recentFilter} onChange={setRecentFilter} mode="default" />
+        </div>
       </div>
+      {deleteMode === "recent" && (
+        <p className="list-select-hint" role="status">{t.deleteHint}</p>
+      )}
       {recentRows.length > 0 ? (
         recentRows.map((h) => {
           const id = h.customer.rosterId || customerRosterIdFromName(h.customer.name);
+          const inSel = selRecent.includes(h.id);
           return (
-            <button
-              type="button"
-              key={h.id}
-              className="regular-list-row regular-list-row--with-ic"
-              onClick={() => onSelect({
-                id, name: h.customer.name.trim(), gender: h.customer.gender || "", dob: h.customer.dob || "",
-              })}
-            >
-              <div className="regular-list-ic" aria-hidden><User size={18} strokeWidth={2} /></div>
-              <span className="nm">{h.customer.name}</span>
-              {h.reportId && <span className="sub">{h.reportId}</span>}
-            </button>
+            <div key={h.id} className="regular-list-row-wrap">
+              {deleteMode === "recent" && (
+                <input
+                  type="checkbox"
+                  className="list-sel-check"
+                  checked={inSel}
+                  onChange={() => toggleRecentSel(h.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={h.reportId || h.customer.name}
+                />
+              )}
+              <button
+                type="button"
+                className={`regular-list-row regular-list-row--with-ic${deleteMode === "recent" ? " regular-list-row--select" : ""}`}
+                onClick={() => {
+                  if (deleteMode === "recent") toggleRecentSel(h.id);
+                  else
+                    onSelect({
+                      id, name: h.customer.name.trim(), gender: h.customer.gender || "", dob: h.customer.dob || "",
+                    });
+                }}
+              >
+                <div className="regular-list-ic" aria-hidden><User size={18} strokeWidth={2} /></div>
+                <span className="nm">{h.customer.name}</span>
+                {h.reportId && <span className="sub">{h.reportId}</span>}
+              </button>
+            </div>
           );
         })
       ) : null}
+      {deleteMode === "recent" && recentRows.length > 0 && (
+        <div className="list-select-bar">
+          <button type="button" className="btn btn-outline" onClick={() => { setDeleteMode(null); setSelRecent([]); }}>
+            {t.cancelSelection}
+          </button>
+          <button type="button" className="btn btn-solid" disabled={!selRecent.length} onClick={runDeleteRecent}>
+            {t.deleteSelected}
+            {selRecent.length > 0 ? ` (${selRecent.length})` : ""}
+          </button>
+        </div>
+      )}
+
       <div className="list-section-hd" style={{ marginTop: 18, alignItems: "center" }}>
         <span>
           <span className="list-section-t">{t.customersListTitle}</span>
           <span className="list-section-d"> | {year}</span>
         </span>
-        <ListFilterMenu t={t} value={customerFilter} onChange={setCustomerFilter} mode="default" />
+        <div className="list-section-hd-actions">
+          <button
+            type="button"
+            className={`list-hd-action-btn${deleteMode === "customers" ? " is-active" : ""}`}
+            onClick={startCustomerDeleteMode}
+            title={deleteMode === "customers" ? t.cancelSelection : t.delete}
+            aria-label={deleteMode === "customers" ? t.cancelSelection : t.delete}
+            aria-pressed={deleteMode === "customers"}
+          >
+            <Trash2 size={16} strokeWidth={2} />
+          </button>
+          <ListFilterMenu t={t} value={customerFilter} onChange={setCustomerFilter} mode="default" />
+        </div>
       </div>
+      {deleteMode === "customers" && (
+        <p className="list-select-hint" role="status">{t.deleteHint}</p>
+      )}
       {customerRows.length > 0 ? (
         customerRows.map((c) => {
           const rid = lastReportIdForCustomer(c.id, c.name);
+          const inSel = selCustomers.includes(c.id);
           return (
-            <button
-              type="button"
-              key={c.id}
-              className="regular-list-row regular-list-row--with-ic"
-              onClick={() => onSelect({ id: c.id, name: c.name, gender: c.gender || "", dob: c.dob || "" })}
-            >
-              <div className="regular-list-ic" aria-hidden><User size={18} strokeWidth={2} /></div>
-              <span className="nm">{c.name}</span>
-              {rid ? <span className="sub">| {rid}</span> : null}
-            </button>
+            <div key={c.id} className="regular-list-row-wrap">
+              {deleteMode === "customers" && (
+                <input
+                  type="checkbox"
+                  className="list-sel-check"
+                  checked={inSel}
+                  onChange={() => toggleCustomerSel(c.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={c.name}
+                />
+              )}
+              <button
+                type="button"
+                className={`regular-list-row regular-list-row--with-ic${deleteMode === "customers" ? " regular-list-row--select" : ""}`}
+                onClick={() => {
+                  if (deleteMode === "customers") toggleCustomerSel(c.id);
+                  else onSelect({ id: c.id, name: c.name, gender: c.gender || "", dob: c.dob || "" });
+                }}
+              >
+                <div className="regular-list-ic" aria-hidden><User size={18} strokeWidth={2} /></div>
+                <span className="nm">{c.name}</span>
+                {rid ? <span className="sub">| {rid}</span> : null}
+              </button>
+            </div>
           );
         })
       ) : (
         <div className="empty-roster-hint">{t.noCustomers}</div>
       )}
+      {deleteMode === "customers" && customerRows.length > 0 && (
+        <div className="list-select-bar">
+          <button type="button" className="btn btn-outline" onClick={() => { setDeleteMode(null); setSelCustomers([]); }}>
+            {t.cancelSelection}
+          </button>
+          <button type="button" className="btn btn-solid" disabled={!selCustomers.length} onClick={runDeleteCustomers}>
+            {t.deleteSelected}
+            {selCustomers.length > 0 ? ` (${selCustomers.length})` : ""}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-function RegularCustomerIntake({ t, lang, profile, onBack, onComplete, onOpenPastReport, rosterVersion, onProfileUpdate, editorOpen, onEditorOpenChange, onRegisterSave }) {
+function RegularCustomerIntake({ t, lang, profile, onBack, onComplete, onOpenPastReport, rosterVersion, onProfileUpdate, editorOpen, onEditorOpenChange, onRegisterSave, onDeleteReportEntry, onDeleteAllReports }) {
   const [name, setName] = useState(profile.name);
   const [gender, setGender] = useState(profile.gender);
   const [dob, setDob] = useState(profile.dob);
@@ -1287,7 +1500,7 @@ function RegularCustomerIntake({ t, lang, profile, onBack, onComplete, onOpenPas
   };
 
   return (
-    <div className="form-page">
+    <div className="form-page form-page--below-tabs">
       <button type="button" className="regular-back-btn" onClick={onBack}>
         <ArrowLeft size={16} />
         {t.backToList}
@@ -1417,26 +1630,47 @@ function RegularCustomerIntake({ t, lang, profile, onBack, onComplete, onOpenPas
         {error && <div className="error-box">⚠️ {error}</div>}
       </div>
       {past.length > 0 && (
-        <div className="card card--intake" style={{ marginBottom: 0 }}>
+        <div className="card card--intake" style={{ marginBottom: 0, marginTop: 20 }}>
           <div className="list-section-hd past-reports-h" style={{ margin: "0 0 8px", alignItems: "center" }}>
             <span>
               <span className="list-section-t">{t.allReports}</span>
               <span className="list-section-d"> | {year}</span>
             </span>
-            <ListFilterMenu t={t} value={reportFilter} onChange={setReportFilter} mode="reports" />
+            <div className="list-section-hd-actions">
+              <button
+                type="button"
+                className="regular-list-del reports-hd-del"
+                onClick={() => { if (window.confirm(t.confirmDeleteAllReports)) onDeleteAllReports?.(); }}
+                title={t.deleteAllReports}
+                aria-label={t.deleteAllReports}
+              >
+                <Trash2 size={16} strokeWidth={2} />
+              </button>
+              <ListFilterMenu t={t} value={reportFilter} onChange={setReportFilter} mode="reports" />
+            </div>
           </div>
           <div className="past-list">
             {pastFiltered.map((h) => (
-              <button
-                type="button"
-                key={h.id}
-                className="regular-list-row regular-list-row--with-ic"
-                onClick={() => onOpenPastReport(h)}
-              >
-                <div className="regular-list-ic" aria-hidden><User size={18} strokeWidth={2} /></div>
-                <span className="nm">{formatDate(h.date, lang)}</span>
-                {h.reportId && <span className="sub">{h.reportId}</span>}
-              </button>
+              <div key={h.id} className="regular-list-row-wrap">
+                <button
+                  type="button"
+                  className="regular-list-row regular-list-row--with-ic"
+                  onClick={() => onOpenPastReport(h)}
+                >
+                  <div className="regular-list-ic" aria-hidden><User size={18} strokeWidth={2} /></div>
+                  <span className="nm">{formatDate(h.date, lang)}</span>
+                  {h.reportId && <span className="sub">{h.reportId}</span>}
+                </button>
+                <button
+                  type="button"
+                  className="regular-list-del"
+                  onClick={(e) => { e.stopPropagation(); if (window.confirm(t.confirmDeleteReport)) onDeleteReportEntry?.(h.id); }}
+                  aria-label={t.deleteThisReport}
+                  title={t.deleteThisReport}
+                >
+                  <Trash2 size={16} strokeWidth={2} />
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -1851,6 +2085,73 @@ export default function App() {
     setRosterVersion((v) => v + 1);
   }, []);
 
+  const clearStoredCurrentIfScanId = useCallback((scanId) => {
+    if (!scanId) return;
+    try {
+      const raw = localStorage.getItem(STORAGE_CURRENT);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p?.id === scanId) localStorage.removeItem(STORAGE_CURRENT);
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleBatchDeleteHistory = useCallback((ids) => {
+    if (!ids?.length) return;
+    removeHistoryEntriesByIds(ids);
+    syncRosterWithHistory();
+    setRosterVersion((v) => v + 1);
+    setScan((s) => (s && ids.includes(s.id) ? null : s));
+    try {
+      const raw = localStorage.getItem(STORAGE_CURRENT);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p?.id && ids.includes(p.id)) localStorage.removeItem(STORAGE_CURRENT);
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleBatchDeleteCustomers = useCallback((rids) => {
+    if (!rids?.length) return;
+    removeCustomersByRosterIds(rids);
+    setRosterVersion((v) => v + 1);
+    const sset = new Set(rids);
+    setRegularProfile((rp) => (rp && sset.has(rp.id) ? null : rp));
+    setScan((s) => {
+      if (!s?.customer) return s;
+      const rid = s.customer.rosterId || customerRosterIdFromName(s.customer.name);
+      if (sset.has(rid)) {
+        try { localStorage.removeItem(STORAGE_CURRENT); } catch (_) {}
+        return null;
+      }
+      return s;
+    });
+  }, []);
+
+  const handleDeleteReportFromProfile = useCallback(
+    (scanId) => {
+      removeHistoryEntryById(scanId);
+      syncRosterWithHistory();
+      setRosterVersion((v) => v + 1);
+      setScan((s) => (s?.id === scanId ? null : s));
+      clearStoredCurrentIfScanId(scanId);
+    },
+    [clearStoredCurrentIfScanId],
+  );
+
+  const handleDeleteAllReportsForProfile = useCallback(() => {
+    if (!regularProfile?.id) return;
+    removeAllHistoryForCustomerProfile(regularProfile.id, regularProfile.name);
+    setRosterVersion((v) => v + 1);
+    setScan((s) => {
+      if (s?.customer && sameCustomerRoster(s.customer, regularProfile.id)) {
+        try { localStorage.removeItem(STORAGE_CURRENT); } catch (_) {}
+        return null;
+      }
+      return s;
+    });
+  }, [regularProfile]);
+
   const [lang, setLang] = useState(() => {
     if (typeof window !== "undefined") return localStorage.getItem("trichella_lang") || "en";
     return "en";
@@ -1954,6 +2255,8 @@ export default function App() {
                 lang={lang}
                 rosterVersion={rosterVersion}
                 onSelect={(p) => { setProfileEditorOpen(false); setRegularProfile(p); }}
+                onBatchDeleteHistory={handleBatchDeleteHistory}
+                onBatchDeleteCustomers={handleBatchDeleteCustomers}
               />
             ) : (
               <RegularCustomerIntake
@@ -1969,6 +2272,8 @@ export default function App() {
                 onComplete={handleAnalysisComplete}
                 onOpenPastReport={openPastReport}
                 onProfileUpdate={handleProfileUpdate}
+                onDeleteReportEntry={handleDeleteReportFromProfile}
+                onDeleteAllReports={handleDeleteAllReportsForProfile}
               />
             )}
           </>
