@@ -2,14 +2,15 @@
  * Trichella — Scalp Reading AI Diagnostics
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { CheckCircle, ArrowLeft, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { CheckCircle, ArrowLeft, Calendar, ChevronDown, ChevronUp, Search, Pencil, User, SlidersHorizontal } from "lucide-react";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // STORAGE KEYS
 // ══════════════════════════════════════════════════════════════════════════════
 const STORAGE_CURRENT = "trichella_current_scan";
 const STORAGE_HISTORY = "trichella_scan_history";
+const STORAGE_ROSTER = "trichella_customers";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TRANSLATIONS
@@ -79,6 +80,25 @@ const T = {
     metricConditionBurden: "Condition burden",
     metricScoreHint: "0–100 · higher = more severe",
     metricSeverityIndex: "Severity index",
+    searchCustomer: "Search customer",
+    recentScanned: "Recent scanned",
+    customersListTitle: "Customers",
+    noCustomers: "No saved customers yet. Complete a scan on the “New” tab to add one.",
+    backToList: "Back to list",
+    pastReport: "Past report",
+    editProfile: "Edit details",
+    save: "Save",
+    headerEditProfile: "Edit customer details",
+    headerSaveProfile: "Save details",
+    editReportFeedback: "Edit",
+    listFilterAria: "Filter this list",
+    filterAll: "All customers",
+    filterRecent: "Recent scanned",
+    filterByDate: "By date",
+    allReports: "All reports",
+    allReportsFilterAll: "All reports",
+    allReportsFilterRecent: "Recent",
+    allReportsFilterDate: "By date",
   },
   zh: {
     pageTitle: "头皮检测",
@@ -140,6 +160,25 @@ const T = {
     metricConditionBurden: "症状负担指数",
     metricScoreHint: "0–100 · 越高越严重",
     metricSeverityIndex: "严重度指数",
+    searchCustomer: "搜索客户",
+    recentScanned: "最近检测",
+    customersListTitle: "客户",
+    noCustomers: "尚无客户。请先在「新客户」中完成一次检测以添加。",
+    backToList: "返回列表",
+    pastReport: "历史报告",
+    editProfile: "编辑资料",
+    save: "保存",
+    headerEditProfile: "编辑客户资料",
+    headerSaveProfile: "保存资料",
+    editReportFeedback: "编辑",
+    listFilterAria: "筛选此列表",
+    filterAll: "全部客户",
+    filterRecent: "最近检测",
+    filterByDate: "按日期",
+    allReports: "全部报告",
+    allReportsFilterAll: "全部报告",
+    allReportsFilterRecent: "最近",
+    allReportsFilterDate: "按日期",
   },
 };
 
@@ -205,6 +244,10 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .lang-btn:hover{border-color:var(--gold);color:var(--gold)}
 [data-theme="light"] .intake-header-btn{background:#FFFFFF;border:1px solid #D0D8D4;color:#1B4332;font-weight:600}
 [data-theme="light"] .intake-header-btn:hover{border-color:#1B4332;color:#1B4332}
+.header-icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid #D0D8D4;background:#FFFFFF;color:#1B4332;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.header-icon-btn:hover{border-color:#1B4332;background:rgba(27,67,50,.04)}
+.header-text-btn{height:36px;border-radius:10px;border:1px solid #1B4332;background:linear-gradient(180deg,#1B4332,#132A22);color:#FFFFFF;cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;padding:0 14px;transition:all .15s;flex-shrink:0}
+.header-text-btn:hover{box-shadow:0 4px 12px rgba(27,67,50,.22)}
 .input-surface.surface-error{border-color:var(--crit)!important}
 
 /* ── Card / white surfaces (intake) ── */
@@ -250,6 +293,47 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 [data-theme="light"] .tab-btn.active{background:linear-gradient(180deg,#1B4332,#132A22);color:#F3F7F5;box-shadow:0 2px 10px rgba(27,67,50,.22);border:1px solid rgba(19,42,34,.45)}
 .tab-btn:not(.active):hover{background:rgba(255,255,255,.35)}
 [data-theme="light"] .tab-btn:not(.active):hover{background:rgba(255,255,255,.4);color:#4A5E56}
+
+/* ── Regular customer list + profile ── */
+.regular-back-btn{display:inline-flex;align-items:center;gap:8px;border:none;background:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;color:#1B4332;padding:4px 0 12px;margin:0 0 4px}
+.regular-back-btn:hover{color:#132A22}
+.regular-list-search{position:relative;margin-bottom:12px}
+.regular-list-search .search-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#6B8075;pointer-events:none}
+.regular-list-search input{width:100%;padding:12px 14px 12px 40px;border-radius:10px;border:1px solid #D5DED9;background:#FFFFFF;font-size:14px;color:#1B4332;outline:none;box-shadow:0 1px 3px rgba(16,42,30,.04)}
+.regular-list-search input:focus{outline:2px solid rgba(27,67,50,.12);border-color:#C5D0CA}
+.list-section-hd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:16px 0 8px;padding-top:2px}
+.list-section-hd .list-section-t{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3)}
+.list-section-d{font-size:11px;font-weight:600;color:var(--text3)}
+.regular-list-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:10px;border:1px solid #D5DED9;background:#FFFFFF;box-shadow:0 1px 2px rgba(16,42,30,.04);margin-bottom:8px;cursor:pointer;transition:background .15s,border-color .15s;text-align:left;width:100%;font-family:'Outfit',sans-serif}
+.regular-list-row:hover{border-color:#1B4332;background:rgba(27,67,50,.03)}
+.regular-list-row .nm{font-size:15px;font-weight:600;color:#1B4332;flex:1;min-width:0}
+.regular-list-row .sub{font-size:12px;font-weight:600;color:#6B8075;flex-shrink:0}
+.empty-roster-hint{padding:20px 14px;border-radius:10px;border:1px dashed #C5D0CA;background:rgba(255,255,255,.6);font-size:13px;color:var(--text3);line-height:1.5}
+.profile-hd-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.profile-edit-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid #D0D8D4;background:#FFFFFF;color:#1B4332;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif}
+.profile-edit-btn:hover{border-color:#1B4332}
+.profile-readonly .form-input:read-only,.profile-readonly .form-select:disabled{background:transparent;cursor:default;opacity:1}
+.past-reports-h{margin-top:18px}
+.past-reports-h .list-section-t{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3)}
+.past-reports-h .list-section-d{margin-left:6px}
+.past-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.list-filter-wrap{position:relative;flex-shrink:0}
+.list-filter-btn{width:32px;height:32px;border-radius:8px;border:1px solid #D0D8D4;background:#FFFFFF;color:#1B4332;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.list-filter-btn:hover{border-color:#1B4332;background:rgba(27,67,50,.04)}
+.list-filter-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:200px;z-index:20;background:#FFF;border:1px solid #D5DED9;border-radius:12px;box-shadow:0 8px 24px rgba(16,42,30,.1);padding:6px;animation:dropdownIn .15s ease}
+@keyframes dropdownIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.list-filter-opt{display:block;width:100%;text-align:left;padding:9px 12px;border-radius:8px;border:none;background:none;font-size:14px;font-weight:500;color:#1B4332;cursor:pointer;font-family:'Outfit',sans-serif}
+.list-filter-opt:hover{background:rgba(27,67,50,.06)}
+.list-filter-opt.active{background:rgba(27,67,50,.1);font-weight:600}
+.regular-list-row--with-ic{gap:10px;justify-content:flex-start}
+.regular-list-ic{flex-shrink:0;width:36px;height:36px;border-radius:50%;background:rgba(27,67,50,.08);color:#1B4332;display:flex;align-items:center;justify-content:center}
+.regular-list-row--with-ic .nm{flex:1;min-width:0}
+.regular-list-row--with-ic .sub{margin-left:auto}
+.profile-identity{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:#1B4332;letter-spacing:.02em;margin-bottom:12px;line-height:1.25}
+.profile-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px}
+.profile-stat-card{background:#F6F9F7;border:1px solid #D5DED9;border-radius:10px;padding:12px 14px}
+.profile-stat-label{font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.profile-stat-value{font-size:15px;font-weight:600;color:#1B4332}
 
 /* ── Form fields ── */
 .form-group{margin-bottom:0}
@@ -416,6 +500,124 @@ function conditionReportPillStyle(condId) {
 
 function generateReportId() {
   return "N" + Math.floor(100000 + Math.random() * 900000);
+}
+
+/** Stable roster id from display name (merge scans for same person). */
+function customerRosterIdFromName(name) {
+  const k = String(name ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  if (!k) return "r_empty";
+  let h = 0;
+  for (let i = 0; i < k.length; i += 1) h = (Math.imul(31, h) + k.charCodeAt(i)) | 0;
+  return "r" + Math.abs(h).toString(36);
+}
+
+function readJson(key, fallback) {
+  try {
+    const r = localStorage.getItem(key);
+    if (!r) return fallback;
+    const p = JSON.parse(r);
+    return p ?? fallback;
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function readHistory() {
+  return readJson(STORAGE_HISTORY, []);
+}
+
+function writeHistory(arr) {
+  try {
+    localStorage.setItem(STORAGE_HISTORY, JSON.stringify(arr));
+  } catch (_) {}
+}
+
+/** Keep local history row in sync when user updates feedback on an existing scan. */
+function patchHistoryScanFields(scanId, fields) {
+  if (!scanId) return;
+  const hist = readHistory();
+  const i = hist.findIndex((h) => h.id === scanId);
+  if (i < 0) return;
+  hist[i] = { ...hist[i], ...fields };
+  writeHistory(hist);
+}
+
+function readRoster() {
+  return readJson(STORAGE_ROSTER, []);
+}
+
+function writeRoster(arr) {
+  try {
+    localStorage.setItem(STORAGE_ROSTER, JSON.stringify(arr));
+  } catch (_) {}
+}
+
+/**
+ * Rebuilds roster from scan history and merges with stored roster.
+ * Any completed scan (new or regular) adds/updates a customer.
+ */
+function syncRosterWithHistory() {
+  const hist = readHistory();
+  const existing = readRoster();
+  const byId = new Map();
+  for (const c of existing) {
+    if (c?.id) byId.set(c.id, { ...c });
+  }
+  for (const h of hist) {
+    if (!h?.customer?.name) continue;
+    const name = String(h.customer.name).trim();
+    if (!name) continue;
+    const id = h.customer.rosterId || customerRosterIdFromName(name);
+    const nextDate = h.date || "";
+    const cur = byId.get(id) || { id, name, gender: "", dob: "" };
+    byId.set(id, {
+      id,
+      name,
+      gender: h.customer.gender || cur.gender || "",
+      dob: h.customer.dob || cur.dob || "",
+      lastScan: !cur.lastScan || (nextDate && new Date(nextDate) >= new Date(cur.lastScan)) ? nextDate : cur.lastScan,
+    });
+  }
+  const merged = Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  writeRoster(merged);
+  return merged;
+}
+
+function sameCustomerRoster(cust, rosterId) {
+  if (!cust || !rosterId) return false;
+  if (cust.rosterId) return cust.rosterId === rosterId;
+  return customerRosterIdFromName(cust.name) === rosterId;
+}
+
+function customerPastReportsFromHistory(rosterId, name) {
+  return readHistory().filter((h) => {
+    if (rosterId && h?.customer) return sameCustomerRoster(h.customer, rosterId);
+    if (name && h?.customer?.name) return h.customer.name.trim().toLowerCase() === name.trim().toLowerCase();
+    return false;
+  });
+}
+
+/** Newest history entry = first in array; used for "Name | N123" display. */
+function lastReportIdForCustomer(rosterId, name) {
+  for (const h of readHistory()) {
+    if (!h?.customer?.name) continue;
+    if (rosterId && sameCustomerRoster(h.customer, rosterId) && h.reportId) return h.reportId;
+    if (name && h.customer.name.trim().toLowerCase() === name.trim().toLowerCase() && h.reportId) return h.reportId;
+  }
+  return "";
+}
+
+function upsertCustomerInRosterFromScan(fullCustomer) {
+  if (!fullCustomer?.name) return;
+  const name = String(fullCustomer.name).trim();
+  if (!name) return;
+  const id = fullCustomer.rosterId || customerRosterIdFromName(name);
+  const list = readRoster();
+  const i = list.findIndex((c) => c.id === id);
+  const next = { id, name, gender: fullCustomer.gender || "", dob: fullCustomer.dob || "", lastScan: new Date().toISOString() };
+  if (i >= 0) list[i] = { ...list[i], ...next, lastScan: next.lastScan };
+  else list.push(next);
+  writeRoster(list);
 }
 
 function translateMetricValue(raw, lang, t) {
@@ -599,7 +801,7 @@ async function runAI(b64, mime, lang, scanId) {
 // CUSTOMER FORM + UPLOAD
 // ══════════════════════════════════════════════════════════════════════════════
 
-function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerTypeChange }) {
+function CustomerFormSection({ onComplete, lang, t }) {
   const [name, setName] = useState("");
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
@@ -661,7 +863,7 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
         id: scanId,
         reportId,
         date: new Date().toISOString(),
-        customer: { name: name.trim(), gender, dob, type: customerType },
+        customer: { name: name.trim(), gender, dob, type: "new" },
         preview: previewFinal,
         report,
         drive,
@@ -675,15 +877,6 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
 
   return (
     <div className="form-page">
-      <div className="customer-tabs" role="tablist" aria-label={t.customerTypeAria}>
-        <button type="button" role="tab" aria-selected={customerType === "new"} className={`tab-btn ${customerType === "new" ? "active" : ""}`} onClick={() => onCustomerTypeChange("new")}>
-          {t.tabNew}
-        </button>
-        <button type="button" role="tab" aria-selected={customerType === "regular"} className={`tab-btn ${customerType === "regular" ? "active" : ""}`} onClick={() => onCustomerTypeChange("regular")}>
-          {t.tabRegular}
-        </button>
-      </div>
-
       <div className={`input-surface has-asterisk${nameError ? " surface-error" : ""}`}>
         <span className="field-asterisk" aria-hidden="true">*</span>
         <input
@@ -811,6 +1004,448 @@ function CustomerFormSection({ onComplete, lang, t, customerType, onCustomerType
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// REGULAR CUSTOMER — list + profile + upload (same analysis pipeline as new)
+// ══════════════════════════════════════════════════════════════════════════════
+
+function ListFilterMenu({ t, value, onChange, mode = "default" }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+  const options = mode === "reports" ? [
+    { id: "all", label: t.allReportsFilterAll },
+    { id: "recent", label: t.allReportsFilterRecent },
+    { id: "date", label: t.allReportsFilterDate },
+  ] : [
+    { id: "all", label: t.filterAll },
+    { id: "recent", label: t.filterRecent },
+    { id: "date", label: t.filterByDate },
+  ];
+  return (
+    <div className="list-filter-wrap" ref={ref}>
+      <button
+        type="button"
+        className="list-filter-btn"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label={t.listFilterAria}
+        aria-haspopup="menu"
+      >
+        <SlidersHorizontal size={16} strokeWidth={2} />
+      </button>
+      {open && (
+        <div className="list-filter-menu" role="menu">
+          {options.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              role="menuitem"
+              className={`list-filter-opt${value === o.id ? " active" : ""}`}
+              onClick={() => { onChange(o.id); setOpen(false); }}
+            >
+              {o.label}
+              {value === o.id ? " \u2713" : ""}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function genderToLabel(t, g) {
+  if (g === "male") return t.genderMale;
+  if (g === "female") return t.genderFemale;
+  if (g === "other") return t.genderOther;
+  return g || "—";
+}
+
+function RegularCustomerList({ t, lang, onSelect, rosterVersion }) {
+  const [q, setQ] = useState("");
+  const [recentFilter, setRecentFilter] = useState("all");
+  const [customerFilter, setCustomerFilter] = useState("all");
+  const roster = useMemo(() => {
+    syncRosterWithHistory();
+    return readRoster();
+  }, [rosterVersion, q]);
+  const hist = useMemo(() => readHistory(), [rosterVersion]);
+  const year = new Date().getFullYear();
+  const todayStr = useMemo(
+    () => new Date().toLocaleDateString(lang === "zh" ? "zh-CN" : "en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    [lang],
+  );
+  const qy = q.trim().toLowerCase();
+  const baseRoster = roster.filter((c) => (c.name || "").toLowerCase().includes(qy));
+  const customerRows = useMemo(() => {
+    let rows = baseRoster;
+    if (customerFilter === "recent") {
+      const th = Date.now() - 30 * 86400000;
+      rows = rows.filter((c) => c.lastScan && new Date(c.lastScan) >= th);
+    }
+    rows = [...rows].sort((a, b) => {
+      if (customerFilter === "date") {
+        return new Date(b.lastScan || 0) - new Date(a.lastScan || 0);
+      }
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
+    return rows;
+  }, [baseRoster, customerFilter, rosterVersion]);
+  const recentRows = useMemo(() => {
+    let rows = hist.filter((h) => h?.customer?.name);
+    if (recentFilter === "recent") {
+      const th = Date.now() - 7 * 86400000;
+      rows = rows.filter((h) => new Date(h.date) >= th);
+    }
+    rows = [...rows].sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (recentFilter === "all") {
+      return rows.slice(0, 8);
+    }
+    return rows.slice(0, 12);
+  }, [hist, recentFilter, rosterVersion]);
+  return (
+    <div className="form-page">
+      <div className="regular-list-search">
+        <span className="search-ic" aria-hidden><Search size={16} strokeWidth={2.2} /></span>
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={t.searchCustomer}
+          aria-label={t.searchCustomer}
+        />
+      </div>
+      <div className="list-section-hd" style={{ alignItems: "center" }}>
+        <span>
+          <span className="list-section-t">{t.recentScanned}</span>
+          <span className="list-section-d"> | {todayStr}</span>
+        </span>
+        <ListFilterMenu t={t} value={recentFilter} onChange={setRecentFilter} mode="default" />
+      </div>
+      {recentRows.length > 0 ? (
+        recentRows.map((h) => {
+          const id = h.customer.rosterId || customerRosterIdFromName(h.customer.name);
+          return (
+            <button
+              type="button"
+              key={h.id}
+              className="regular-list-row regular-list-row--with-ic"
+              onClick={() => onSelect({
+                id, name: h.customer.name.trim(), gender: h.customer.gender || "", dob: h.customer.dob || "",
+              })}
+            >
+              <div className="regular-list-ic" aria-hidden><User size={18} strokeWidth={2} /></div>
+              <span className="nm">{h.customer.name}</span>
+              {h.reportId && <span className="sub">{h.reportId}</span>}
+            </button>
+          );
+        })
+      ) : null}
+      <div className="list-section-hd" style={{ marginTop: 18, alignItems: "center" }}>
+        <span>
+          <span className="list-section-t">{t.customersListTitle}</span>
+          <span className="list-section-d"> | {year}</span>
+        </span>
+        <ListFilterMenu t={t} value={customerFilter} onChange={setCustomerFilter} mode="default" />
+      </div>
+      {customerRows.length > 0 ? (
+        customerRows.map((c) => {
+          const rid = lastReportIdForCustomer(c.id, c.name);
+          return (
+            <button
+              type="button"
+              key={c.id}
+              className="regular-list-row regular-list-row--with-ic"
+              onClick={() => onSelect({ id: c.id, name: c.name, gender: c.gender || "", dob: c.dob || "" })}
+            >
+              <div className="regular-list-ic" aria-hidden><User size={18} strokeWidth={2} /></div>
+              <span className="nm">{c.name}</span>
+              {rid ? <span className="sub">| {rid}</span> : null}
+            </button>
+          );
+        })
+      ) : (
+        <div className="empty-roster-hint">{t.noCustomers}</div>
+      )}
+    </div>
+  );
+}
+
+function RegularCustomerIntake({ t, lang, profile, onBack, onComplete, onOpenPastReport, rosterVersion, onProfileUpdate, editorOpen, onEditorOpenChange, onRegisterSave }) {
+  const [name, setName] = useState(profile.name);
+  const [gender, setGender] = useState(profile.gender);
+  const [dob, setDob] = useState(profile.dob);
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState(null);
+  const [nameError, setNameError] = useState(false);
+  const [genderError, setGenderError] = useState(false);
+  const fileRef = useRef();
+
+  useEffect(() => {
+    setName(profile.name);
+    setGender(profile.gender);
+    setDob(profile.dob);
+  }, [profile.id, profile.name, profile.gender, profile.dob, rosterVersion]);
+
+  const canScan = Boolean(name.trim() && gender && file);
+  const year = new Date().getFullYear();
+  const [reportFilter, setReportFilter] = useState("all");
+  const displayReportId = useMemo(
+    () => lastReportIdForCustomer(profile.id, profile.name),
+    [profile.id, profile.name, rosterVersion, name],
+  );
+  const past = useMemo(
+    () => customerPastReportsFromHistory(profile.id, profile.name)
+      .filter((e) => e.id && e.report) // have stored report
+      .sort((a, b) => new Date(b.date) - new Date(a.date)),
+    [profile.id, profile.name, rosterVersion],
+  );
+  const pastFiltered = useMemo(() => {
+    let p = past;
+    if (reportFilter === "recent") {
+      const th = Date.now() - 30 * 86400000;
+      p = p.filter((e) => new Date(e.date) >= th);
+    }
+    return [...p].sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [past, reportFilter]);
+
+  const pick = (f) => {
+    if (!f) return;
+    const type = (f.type || "").toLowerCase();
+    const ext = (f.name || "").split(".").pop()?.toLowerCase();
+    const isImage = type.startsWith("image/") || /\.(jpe?g|png|gif|bmp|webp|heic)$/i.test(f.name || "");
+    const isVideo = type.startsWith("video/") || ["mp4", "webm", "mov", "wmv", "avi"].includes(ext);
+    if (!isImage && !isVideo) { setError(t.fileError); return; }
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+    setError(null);
+  };
+
+  const handleCancel = () => { setFile(null); setPreview(null); setError(null); };
+
+  const saveProfile = useCallback(() => {
+    const ne = !name.trim();
+    const ge = !gender;
+    setNameError(ne);
+    setGenderError(ge);
+    if (ne || ge) return false;
+    const p = { id: profile.id, name: name.trim(), gender, dob, lastScan: profile.lastScan };
+    onProfileUpdate(p);
+    onEditorOpenChange(false);
+    return true;
+  }, [name, gender, dob, profile.id, profile.lastScan, onProfileUpdate, onEditorOpenChange]);
+
+  useEffect(() => {
+    onRegisterSave?.(saveProfile);
+    return () => onRegisterSave?.(null);
+  }, [onRegisterSave, saveProfile]);
+
+  const handleScan = async () => {
+    if (!file) return;
+    const ne = !name.trim();
+    const ge = !gender;
+    setNameError(ne);
+    setGenderError(ge);
+    if (ne || ge) return;
+    setLoading(true);
+    setProgress(0);
+    setError(null);
+    const interval = setInterval(() => setProgress((p) => Math.min(p + 12, 90)), 450);
+    try {
+      const { b64, mime } = await toSupportedFormat(file);
+      const scanId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const { report, drive } = await runAI(b64, mime, lang, scanId);
+      if (import.meta.env.DEV || import.meta.env.VITE_LOG_DRIVE === "1") {
+        console.info("[Trichella] Drive:", drive);
+      }
+      clearInterval(interval);
+      setProgress(100);
+      const type = (file.type || "").toLowerCase();
+      const ext = (file.name || "").split(".").pop()?.toLowerCase();
+      const wasConverted = type.startsWith("video/") || type.includes("bmp") || type === "image/heic" || ["bmp", "wmv", "avi", "mov", "mp4", "webm"].includes(ext);
+      const previewFinal = wasConverted ? `data:image/png;base64,${b64}` : preview;
+      const reportId = generateReportId();
+      setTimeout(() => onComplete({
+        id: scanId,
+        reportId,
+        date: new Date().toISOString(),
+        customer: { name: name.trim(), gender, dob, type: "regular", rosterId: profile.id },
+        preview: previewFinal,
+        report,
+        drive,
+      }), 400);
+    } catch (e) {
+      clearInterval(interval);
+      setError(e.message || t.analysisError);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="form-page">
+      <button type="button" className="regular-back-btn" onClick={onBack}>
+        <ArrowLeft size={16} />
+        {t.backToList}
+      </button>
+      <div className="card card--intake" style={{ marginBottom: 12 }}>
+        {editorOpen ? (
+          <>
+            <div className="section-title-label" style={{ marginBottom: 10 }}>{t.editProfile}</div>
+            <div className={`input-surface has-asterisk${nameError ? " surface-error" : ""}`} style={{ marginBottom: 10 }}>
+              <span className="field-asterisk" aria-hidden>*</span>
+              <input
+                className={`form-input${nameError ? " error" : ""}`}
+                value={name}
+                onChange={(e) => { setName(e.target.value); setNameError(false); }}
+                placeholder={t.customerNamePlaceholder}
+              />
+              {nameError && <div className="form-error">{t.nameRequired}</div>}
+            </div>
+            <div className="form-row form-row--equal">
+              <div className={`input-surface input-surface--stack${genderError ? " surface-error" : ""}`} style={{ minWidth: 0 }}>
+                <div className="form-label-dob" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span>{t.genderFieldLabel}</span>
+                  <span className="form-required" aria-hidden>*</span>
+                </div>
+                <select
+                  className={`form-select${genderError ? " error" : ""}`}
+                  value={gender}
+                  onChange={(e) => { setGender(e.target.value); setGenderError(false); }}
+                >
+                  <option value="">{t.genderEmptyOption}</option>
+                  <option value="male">{t.genderMale}</option>
+                  <option value="female">{t.genderFemale}</option>
+                  <option value="other">{t.genderOther}</option>
+                </select>
+                {genderError && <div className="form-error">{t.genderRequired}</div>}
+              </div>
+              <div className="input-surface input-surface--stack" style={{ minWidth: 0 }}>
+                <div className="form-label-dob">{t.dobLabel}</div>
+                <div className="dob-value-row">
+                  <div className="dob-wrap">
+                    <input
+                      className="form-input"
+                      type="date"
+                      value={dob}
+                      onChange={(e) => setDob(e.target.value)}
+                      style={{ colorScheme: "light" }}
+                    />
+                    <span className="dob-cal-icon" aria-hidden><Calendar size={18} strokeWidth={2} /></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="profile-identity">
+              {name || "—"}
+              {displayReportId ? <span> | {displayReportId}</span> : null}
+            </div>
+            <div className="profile-stat-grid">
+              <div className="profile-stat-card">
+                <div className="profile-stat-label">{t.genderFieldLabel}</div>
+                <div className="profile-stat-value">{genderToLabel(t, gender)}</div>
+              </div>
+              <div className="profile-stat-card">
+                <div className="profile-stat-label">{t.dobLabel}</div>
+                <div className="profile-stat-value">{dob ? formatDate(dob, lang) : "—"}</div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+      <div className="card card--intake">
+        <div className="upload-section-label">{t.uploadScalpImage}</div>
+        <div className="upload-hint">{t.uploadHint}</div>
+        {!preview ? (
+          <div
+            className="dropzone"
+            role="button"
+            tabIndex={0}
+            onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("drag"); }}
+            onDragLeave={(e) => { e.currentTarget.classList.remove("drag"); }}
+            onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove("drag"); pick(e.dataTransfer?.files?.[0]); }}
+            onClick={() => fileRef.current?.click()}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }}
+          >
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*,.bmp,image/bmp,video/*,.mp4,.webm,.mov,.wmv,.avi"
+              onChange={(e) => { pick(e.target?.files?.[0]); e.target.value = ""; }}
+              aria-hidden
+            />
+            <div className="dropzone-icon">📸</div>
+            <div className="dropzone-text">{t.dropHere}</div>
+            <div className="dropzone-sub">{t.orClick}</div>
+          </div>
+        ) : (
+          <div>
+            {file?.type?.startsWith("video/") ? (
+              <video src={preview} controls className="preview-video" />
+            ) : (
+              <img src={preview} alt={t.scanPreviewAlt} className="preview-img" />
+            )}
+          </div>
+        )}
+        {preview && !loading && (
+          <>
+            {!canScan && <p className="caption" style={{ marginTop: 14, textAlign: "center" }}>{t.fillNameGender}</p>}
+            <div className="action-row">
+              <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={handleCancel}>{t.cancel}</button>
+              <button type="button" className="btn btn-solid" style={{ flex: 1, opacity: canScan ? 1 : 0.5 }} onClick={handleScan}>{t.scan}</button>
+            </div>
+          </>
+        )}
+        {loading && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span className="spinner" style={{ width: 18, height: 18 }} />
+              <span className="caption">{t.analysing}</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        )}
+        {error && <div className="error-box">⚠️ {error}</div>}
+      </div>
+      {past.length > 0 && (
+        <div className="card card--intake" style={{ marginBottom: 0 }}>
+          <div className="list-section-hd past-reports-h" style={{ margin: "0 0 8px", alignItems: "center" }}>
+            <span>
+              <span className="list-section-t">{t.allReports}</span>
+              <span className="list-section-d"> | {year}</span>
+            </span>
+            <ListFilterMenu t={t} value={reportFilter} onChange={setReportFilter} mode="reports" />
+          </div>
+          <div className="past-list">
+            {pastFiltered.map((h) => (
+              <button
+                type="button"
+                key={h.id}
+                className="regular-list-row regular-list-row--with-ic"
+                onClick={() => onOpenPastReport(h)}
+              >
+                <div className="regular-list-ic" aria-hidden><User size={18} strokeWidth={2} /></div>
+                <span className="nm">{formatDate(h.date, lang)}</span>
+                {h.reportId && <span className="sub">{h.reportId}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // COLLAPSIBLE (e.g. scalp metrics dropdown)
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -859,11 +1494,12 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
     setFeedbackAccurate(scan.accuracy ?? null);
     setNotes(scan.note ?? "");
     setFeedbackSent(scan.feedbackSent ?? false);
-  }, [scan?.id]);
+  }, [scan?.id, scan?.viewingPastReport]);
 
   if (!scan) return null;
 
   const { report: r, preview, customer, reportId, date } = scan;
+  const viewingPast = scan.viewingPastReport === true;
   const conditions = r?.conditions || [];
   const primaryLabel = r?.primaryCondition || "";
   const primaryLc = primaryLabel.toLowerCase();
@@ -881,7 +1517,7 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
   });
 
   const handleSend = () => {
-    onUpdateScan({ accuracy: feedbackAccurate, note: notes, feedbackSent: true });
+    onUpdateScan({ accuracy: feedbackAccurate, note: notes, feedbackSent: true, viewingPastReport: false });
     setFeedbackSent(true);
     showToast(t.feedbackSent);
   };
@@ -1001,15 +1637,15 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
         <div className="feedback-btns">
           <button
             className={`feedback-btn${feedbackAccurate === "yes" ? " yes-active" : ""}`}
-            onClick={() => { if (!feedbackSent) setFeedbackAccurate("yes"); }}
-            disabled={feedbackSent}
+            onClick={() => { if (!feedbackSent && !viewingPast) setFeedbackAccurate("yes"); }}
+            disabled={feedbackSent || viewingPast}
           >
             {t.yes}
           </button>
           <button
             className={`feedback-btn${feedbackAccurate === "no" ? " no-active" : ""}`}
-            onClick={() => { if (!feedbackSent) setFeedbackAccurate("no"); }}
-            disabled={feedbackSent}
+            onClick={() => { if (!feedbackSent && !viewingPast) setFeedbackAccurate("no"); }}
+            disabled={feedbackSent || viewingPast}
           >
             {t.no}
           </button>
@@ -1020,19 +1656,40 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
           className="notes-textarea"
           placeholder={t.notesPlaceholder}
           value={notes}
-          onChange={(e) => { if (!feedbackSent) setNotes(e.target.value); }}
-          disabled={feedbackSent}
+          onChange={(e) => { if (!feedbackSent && !viewingPast) setNotes(e.target.value); }}
+          disabled={feedbackSent || viewingPast}
         />
 
-        <button
-          type="button"
-          className="btn btn-solid btn-full btn-send-report"
-          style={{ marginTop: 14 }}
-          onClick={handleSend}
-          disabled={feedbackSent}
-        >
-          {feedbackSent ? <><CheckCircle size={16} /> {t.feedbackSent}</> : t.sendFeedback}
-        </button>
+        {viewingPast && !feedbackSent ? (
+          <button
+            type="button"
+            className="btn btn-solid btn-full btn-send-report"
+            style={{ marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
+            onClick={() => onUpdateScan({ viewingPastReport: false })}
+            aria-label={t.editReportFeedback}
+          >
+            <Pencil size={16} strokeWidth={2.2} />
+            <span>{t.editReportFeedback}</span>
+          </button>
+        ) : !feedbackSent ? (
+          <button
+            type="button"
+            className="btn btn-solid btn-full btn-send-report"
+            style={{ marginTop: 14 }}
+            onClick={handleSend}
+          >
+            {t.sendFeedback}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-solid btn-full btn-send-report"
+            style={{ marginTop: 14 }}
+            disabled
+          >
+            <><CheckCircle size={16} /> {t.feedbackSent}</>
+          </button>
+        )}
       </div>
 
       {/* ── Toast ── */}
@@ -1048,7 +1705,22 @@ function CustomerReportSection({ scan, onUpdateScan, lang, t }) {
 export default function App() {
   const [scan, setScan] = useState(null);
   const [customerType, setCustomerType] = useState("new");
+  const [regularProfile, setRegularProfile] = useState(null);
+  const [rosterVersion, setRosterVersion] = useState(0);
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const saveDebounce = useRef(null);
+  const registerProfileSave = useRef(null);
+  const setProfileSaveHandler = useCallback((fn) => { registerProfileSave.current = fn; }, []);
+
+  const changeCustomerType = useCallback((next) => {
+    setCustomerType(next);
+    setRegularProfile(null);
+    setProfileEditorOpen(false);
+  }, []);
+
+  useEffect(() => {
+    setProfileEditorOpen(false);
+  }, [regularProfile?.id]);
 
   const archiveCurrentToHistory = useCallback((cur) => {
     if (!cur?.report) return;
@@ -1069,7 +1741,23 @@ export default function App() {
       const raw = localStorage.getItem(STORAGE_CURRENT);
       if (raw) {
         const p = JSON.parse(raw);
-        if (p?.report && p?.id) setScan(p);
+        if (p?.report && p?.id) {
+          setScan(p);
+          const c = p.customer;
+          if (c && c.type === "regular") {
+            setCustomerType("regular");
+            setRegularProfile({
+              id: c.rosterId || customerRosterIdFromName(c.name),
+              name: c.name || "",
+              gender: c.gender || "",
+              dob: c.dob || "",
+              lastScan: p.date,
+            });
+          } else {
+            setCustomerType("new");
+            setRegularProfile(null);
+          }
+        }
       }
     } catch (_) {}
   }, []);
@@ -1085,13 +1773,34 @@ export default function App() {
   }, [scan]);
 
   const updateScan = useCallback((partial) => {
-    setScan((s) => (s ? { ...s, ...partial } : null));
+    setScan((s) => {
+      if (!s) return null;
+      const n = { ...s, ...partial };
+      if (n.id && ("note" in partial || "accuracy" in partial || "feedbackSent" in partial)) {
+        patchHistoryScanFields(n.id, { note: n.note, accuracy: n.accuracy, feedbackSent: n.feedbackSent });
+      }
+      return n;
+    });
   }, []);
 
   const handleAnalysisComplete = useCallback((newData) => {
+    const enriched = newData?.customer
+      ? {
+        ...newData,
+        customer: {
+          ...newData.customer,
+          rosterId: newData.customer.rosterId || customerRosterIdFromName(newData.customer.name),
+        },
+      }
+      : newData;
+    if (enriched?.customer) {
+      upsertCustomerInRosterFromScan(enriched.customer);
+      syncRosterWithHistory();
+      setRosterVersion((v) => v + 1);
+    }
     setScan((cur) => {
       archiveCurrentToHistory(cur);
-      return { ...newData, note: "", accuracy: null, feedbackSent: false };
+      return { ...enriched, note: "", accuracy: null, feedbackSent: false, viewingPastReport: false };
     });
   }, [archiveCurrentToHistory]);
 
@@ -1101,7 +1810,46 @@ export default function App() {
       try { localStorage.removeItem(STORAGE_CURRENT); } catch (_) {}
       return null;
     });
+    // Keep regular customer selected so back from report returns to profile + list flow
   }, [archiveCurrentToHistory]);
+
+  const openPastReport = useCallback((entry) => {
+    if (!entry?.report) return;
+    const c = entry.customer || {};
+    const rid = c.rosterId || customerRosterIdFromName(c.name);
+    setScan({
+      id: entry.id,
+      reportId: entry.reportId,
+      date: entry.date,
+      customer: { ...c, rosterId: rid, type: "regular" },
+      preview: entry.preview,
+      report: entry.report,
+      note: entry.note ?? "",
+      accuracy: entry.accuracy ?? null,
+      feedbackSent: entry.feedbackSent ?? false,
+      drive: entry.drive ?? null,
+      viewingPastReport: true,
+    });
+    setCustomerType("regular");
+    setRegularProfile({
+      id: rid,
+      name: c.name || "",
+      gender: c.gender || "",
+      dob: c.dob || "",
+      lastScan: entry.date,
+    });
+  }, []);
+
+  const handleProfileUpdate = useCallback((p) => {
+    setRegularProfile(p);
+    const list = readRoster();
+    const i = list.findIndex((c) => c.id === p.id);
+    const row = { id: p.id, name: p.name, gender: p.gender || "", dob: p.dob || "", lastScan: p.lastScan || new Date().toISOString() };
+    if (i >= 0) list[i] = { ...list[i], ...row };
+    else list.push(row);
+    writeRoster(list);
+    setRosterVersion((v) => v + 1);
+  }, []);
 
   const [lang, setLang] = useState(() => {
     if (typeof window !== "undefined") return localStorage.getItem("trichella_lang") || "en";
@@ -1136,6 +1884,28 @@ export default function App() {
             <span className={`page-title${useIntakeChrome ? " page-title--intake" : ""}`}>{inResults ? t.customerReport : t.pageTitle}</span>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {!inResults && customerType === "regular" && regularProfile && (
+              profileEditorOpen ? (
+                <button
+                  type="button"
+                  className="header-text-btn"
+                  onClick={() => registerProfileSave.current?.()}
+                  title={t.headerSaveProfile}
+                >
+                  {t.save}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="header-icon-btn"
+                  onClick={() => setProfileEditorOpen(true)}
+                  title={t.headerEditProfile}
+                  aria-label={t.headerEditProfile}
+                >
+                  <Pencil size={16} />
+                </button>
+              )
+            )}
             <button
               type="button"
               className={`lang-btn${useIntakeChrome ? " intake-header-btn" : ""}`}
@@ -1149,14 +1919,59 @@ export default function App() {
 
         {/* ── Body ── */}
         {!inResults ? (
-          <CustomerFormSection
-            key="form"
-            onComplete={handleAnalysisComplete}
-            lang={lang}
-            t={t}
-            customerType={customerType}
-            onCustomerTypeChange={setCustomerType}
-          />
+          <>
+            <div className="customer-tabs" role="tablist" aria-label={t.customerTypeAria}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={customerType === "new"}
+                className={`tab-btn ${customerType === "new" ? "active" : ""}`}
+                onClick={() => changeCustomerType("new")}
+              >
+                {t.tabNew}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={customerType === "regular"}
+                className={`tab-btn ${customerType === "regular" ? "active" : ""}`}
+                onClick={() => changeCustomerType("regular")}
+              >
+                {t.tabRegular}
+              </button>
+            </div>
+            {customerType === "new" ? (
+              <CustomerFormSection
+                key="form-new"
+                onComplete={handleAnalysisComplete}
+                lang={lang}
+                t={t}
+              />
+            ) : !regularProfile ? (
+              <RegularCustomerList
+                key={`roster-${rosterVersion}`}
+                t={t}
+                lang={lang}
+                rosterVersion={rosterVersion}
+                onSelect={(p) => { setProfileEditorOpen(false); setRegularProfile(p); }}
+              />
+            ) : (
+              <RegularCustomerIntake
+                key={`reg-profile-${regularProfile.id}`}
+                t={t}
+                lang={lang}
+                profile={regularProfile}
+                rosterVersion={rosterVersion}
+                editorOpen={profileEditorOpen}
+                onEditorOpenChange={setProfileEditorOpen}
+                onRegisterSave={setProfileSaveHandler}
+                onBack={() => { setProfileEditorOpen(false); setRegularProfile(null); }}
+                onComplete={handleAnalysisComplete}
+                onOpenPastReport={openPastReport}
+                onProfileUpdate={handleProfileUpdate}
+              />
+            )}
+          </>
         ) : (
           <CustomerReportSection
             scan={scan}
