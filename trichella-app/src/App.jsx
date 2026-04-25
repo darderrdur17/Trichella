@@ -324,12 +324,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .regular-back-btn:hover{color:#132A22}
 .regular-list-row-wrap{display:flex;gap:8px;align-items:stretch;margin-bottom:8px}
 .regular-list-row-wrap .regular-list-row{margin-bottom:0;flex:1;min-width:0}
-.regular-list-del{flex-shrink:0;width:44px;min-height:48px;border-radius:10px;border:1px solid #D5DED9;background:#FFFFFF;color:#6B8075;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;box-shadow:0 1px 2px rgba(16,42,30,.04)}
-.regular-list-del:hover{border-color:var(--crit);color:var(--crit);background:var(--crit-lt)}
 .list-section-hd-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.list-section-hd-actions .regular-list-del{width:36px;min-height:36px}
-.reports-hd-del{color:#6B8075}
-.reports-hd-del:hover{border-color:var(--crit);color:var(--crit);background:var(--crit-lt)}
 .regular-list-search{position:relative;margin-bottom:12px}
 .regular-list-search .search-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#6B8075;pointer-events:none}
 .regular-list-search input{width:100%;padding:12px 14px 12px 40px;border-radius:10px;border:1px solid #D5DED9;background:#FFFFFF;font-size:14px;color:#1B4332;outline:none;box-shadow:0 1px 3px rgba(16,42,30,.04)}
@@ -366,6 +361,9 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .list-filter-opt{display:block;width:100%;text-align:left;padding:9px 12px;border-radius:8px;border:none;background:none;font-size:14px;font-weight:500;color:#1B4332;cursor:pointer;font-family:'Outfit',sans-serif}
 .list-filter-opt:hover{background:rgba(27,67,50,.06)}
 .list-filter-opt.active{background:rgba(27,67,50,.1);font-weight:600}
+.list-filter-sep{height:1px;background:#D5DED9;margin:6px 4px}
+.list-filter-opt--danger{color:var(--crit);font-size:13px}
+.list-filter-opt--danger:hover{background:var(--crit-lt)}
 .regular-list-row--with-ic{gap:10px;justify-content:flex-start}
 .regular-list-ic{flex-shrink:0;width:36px;height:36px;border-radius:50%;background:rgba(27,67,50,.08);color:#1B4332;display:flex;align-items:center;justify-content:center}
 .regular-list-row--with-ic .nm{flex:1;min-width:0}
@@ -581,11 +579,6 @@ function patchHistoryScanFields(scanId, fields) {
   if (i < 0) return;
   hist[i] = { ...hist[i], ...fields };
   writeHistory(hist);
-}
-
-function removeHistoryEntryById(scanId) {
-  if (!scanId) return;
-  writeHistory(readHistory().filter((h) => h.id !== scanId));
 }
 
 function removeHistoryEntriesByIds(scanIds) {
@@ -1084,7 +1077,7 @@ function CustomerFormSection({ onComplete, lang, t }) {
 // REGULAR CUSTOMER — list + profile + upload (same analysis pipeline as new)
 // ══════════════════════════════════════════════════════════════════════════════
 
-function ListFilterMenu({ t, value, onChange, mode = "default" }) {
+function ListFilterMenu({ t, value, onChange, mode = "default", onDeleteAllReports }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -1127,6 +1120,22 @@ function ListFilterMenu({ t, value, onChange, mode = "default" }) {
               {value === o.id ? " \u2713" : ""}
             </button>
           ))}
+          {mode === "reports" && onDeleteAllReports && (
+            <>
+              <div className="list-filter-sep" role="separator" />
+              <button
+                type="button"
+                role="menuitem"
+                className="list-filter-opt list-filter-opt--danger"
+                onClick={() => {
+                  setOpen(false);
+                  if (window.confirm(t.confirmDeleteAllReports)) onDeleteAllReports();
+                }}
+              >
+                {t.deleteAllReports}
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -1386,7 +1395,7 @@ function RegularCustomerList({ t, lang, onSelect, rosterVersion, onBatchDeleteHi
   );
 }
 
-function RegularCustomerIntake({ t, lang, profile, onBack, onComplete, onOpenPastReport, rosterVersion, onProfileUpdate, editorOpen, onEditorOpenChange, onRegisterSave, onDeleteReportEntry, onDeleteAllReports }) {
+function RegularCustomerIntake({ t, lang, profile, onBack, onComplete, onOpenPastReport, rosterVersion, onProfileUpdate, editorOpen, onEditorOpenChange, onRegisterSave, onBatchDeleteReportEntries, onDeleteAllReports }) {
   const [name, setName] = useState(profile.name);
   const [gender, setGender] = useState(profile.gender);
   const [dob, setDob] = useState(profile.dob);
@@ -1426,6 +1435,33 @@ function RegularCustomerIntake({ t, lang, profile, onBack, onComplete, onOpenPas
     }
     return [...p].sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [past, reportFilter]);
+
+  const [deleteReportsMode, setDeleteReportsMode] = useState(false);
+  const [selReportIds, setSelReportIds] = useState([]);
+
+  useEffect(() => {
+    setSelReportIds((prev) => prev.filter((id) => pastFiltered.some((h) => h.id === id)));
+  }, [pastFiltered, reportFilter, rosterVersion]);
+
+  const toggleReportSel = (id) => {
+    setSelReportIds((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  };
+  const toggleReportsDeleteMode = () => {
+    if (deleteReportsMode) {
+      setDeleteReportsMode(false);
+      setSelReportIds([]);
+    } else {
+      setDeleteReportsMode(true);
+      setSelReportIds([]);
+    }
+  };
+  const runDeleteSelectedReports = () => {
+    if (!selReportIds.length) return;
+    if (!window.confirm(t.confirmDeleteNReports.replace("{n}", String(selReportIds.length)))) return;
+    onBatchDeleteReportEntries?.(selReportIds);
+    setDeleteReportsMode(false);
+    setSelReportIds([]);
+  };
 
   const pick = (f) => {
     if (!f) return;
@@ -1631,7 +1667,7 @@ function RegularCustomerIntake({ t, lang, profile, onBack, onComplete, onOpenPas
       </div>
       {past.length > 0 && (
         <div className="card card--intake" style={{ marginBottom: 0, marginTop: 20 }}>
-          <div className="list-section-hd past-reports-h" style={{ margin: "0 0 8px", alignItems: "center" }}>
+            <div className="list-section-hd past-reports-h" style={{ margin: "0 0 8px", alignItems: "center" }}>
             <span>
               <span className="list-section-t">{t.allReports}</span>
               <span className="list-section-d"> | {year}</span>
@@ -1639,40 +1675,75 @@ function RegularCustomerIntake({ t, lang, profile, onBack, onComplete, onOpenPas
             <div className="list-section-hd-actions">
               <button
                 type="button"
-                className="regular-list-del reports-hd-del"
-                onClick={() => { if (window.confirm(t.confirmDeleteAllReports)) onDeleteAllReports?.(); }}
-                title={t.deleteAllReports}
-                aria-label={t.deleteAllReports}
+                className={`list-hd-action-btn${deleteReportsMode ? " is-active" : ""}`}
+                onClick={toggleReportsDeleteMode}
+                title={deleteReportsMode ? t.cancelSelection : t.delete}
+                aria-label={deleteReportsMode ? t.cancelSelection : t.delete}
+                aria-pressed={deleteReportsMode}
               >
                 <Trash2 size={16} strokeWidth={2} />
               </button>
-              <ListFilterMenu t={t} value={reportFilter} onChange={setReportFilter} mode="reports" />
+              <ListFilterMenu
+                t={t}
+                value={reportFilter}
+                onChange={setReportFilter}
+                mode="reports"
+                onDeleteAllReports={onDeleteAllReports}
+              />
             </div>
           </div>
+          {deleteReportsMode && <p className="list-select-hint" role="status">{t.deleteHint}</p>}
           <div className="past-list">
-            {pastFiltered.map((h) => (
-              <div key={h.id} className="regular-list-row-wrap">
-                <button
-                  type="button"
-                  className="regular-list-row regular-list-row--with-ic"
-                  onClick={() => onOpenPastReport(h)}
-                >
-                  <div className="regular-list-ic" aria-hidden><User size={18} strokeWidth={2} /></div>
-                  <span className="nm">{formatDate(h.date, lang)}</span>
-                  {h.reportId && <span className="sub">{h.reportId}</span>}
-                </button>
-                <button
-                  type="button"
-                  className="regular-list-del"
-                  onClick={(e) => { e.stopPropagation(); if (window.confirm(t.confirmDeleteReport)) onDeleteReportEntry?.(h.id); }}
-                  aria-label={t.deleteThisReport}
-                  title={t.deleteThisReport}
-                >
-                  <Trash2 size={16} strokeWidth={2} />
-                </button>
-              </div>
-            ))}
+            {pastFiltered.map((h) => {
+              const inSel = selReportIds.includes(h.id);
+              return (
+                <div key={h.id} className="regular-list-row-wrap">
+                  {deleteReportsMode && (
+                    <input
+                      type="checkbox"
+                      className="list-sel-check"
+                      checked={inSel}
+                      onChange={() => toggleReportSel(h.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={h.reportId || formatDate(h.date, lang)}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className={`regular-list-row regular-list-row--with-ic${deleteReportsMode ? " regular-list-row--select" : ""}`}
+                    onClick={() => {
+                      if (deleteReportsMode) toggleReportSel(h.id);
+                      else onOpenPastReport(h);
+                    }}
+                  >
+                    <div className="regular-list-ic" aria-hidden><User size={18} strokeWidth={2} /></div>
+                    <span className="nm">{formatDate(h.date, lang)}</span>
+                    {h.reportId && <span className="sub">{h.reportId}</span>}
+                  </button>
+                </div>
+              );
+            })}
           </div>
+          {deleteReportsMode && pastFiltered.length > 0 && (
+            <div className="list-select-bar">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => { setDeleteReportsMode(false); setSelReportIds([]); }}
+              >
+                {t.cancelSelection}
+              </button>
+              <button
+                type="button"
+                className="btn btn-solid"
+                disabled={!selReportIds.length}
+                onClick={runDeleteSelectedReports}
+              >
+                {t.deleteSelected}
+                {selReportIds.length > 0 ? ` (${selReportIds.length})` : ""}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -2085,17 +2156,6 @@ export default function App() {
     setRosterVersion((v) => v + 1);
   }, []);
 
-  const clearStoredCurrentIfScanId = useCallback((scanId) => {
-    if (!scanId) return;
-    try {
-      const raw = localStorage.getItem(STORAGE_CURRENT);
-      if (raw) {
-        const p = JSON.parse(raw);
-        if (p?.id === scanId) localStorage.removeItem(STORAGE_CURRENT);
-      }
-    } catch (_) {}
-  }, []);
-
   const handleBatchDeleteHistory = useCallback((ids) => {
     if (!ids?.length) return;
     removeHistoryEntriesByIds(ids);
@@ -2127,17 +2187,6 @@ export default function App() {
       return s;
     });
   }, []);
-
-  const handleDeleteReportFromProfile = useCallback(
-    (scanId) => {
-      removeHistoryEntryById(scanId);
-      syncRosterWithHistory();
-      setRosterVersion((v) => v + 1);
-      setScan((s) => (s?.id === scanId ? null : s));
-      clearStoredCurrentIfScanId(scanId);
-    },
-    [clearStoredCurrentIfScanId],
-  );
 
   const handleDeleteAllReportsForProfile = useCallback(() => {
     if (!regularProfile?.id) return;
@@ -2272,7 +2321,7 @@ export default function App() {
                 onComplete={handleAnalysisComplete}
                 onOpenPastReport={openPastReport}
                 onProfileUpdate={handleProfileUpdate}
-                onDeleteReportEntry={handleDeleteReportFromProfile}
+                onBatchDeleteReportEntries={handleBatchDeleteHistory}
                 onDeleteAllReports={handleDeleteAllReportsForProfile}
               />
             )}
